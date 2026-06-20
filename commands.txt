@@ -1,0 +1,341 @@
+mkdir -p ehr-network/{configtx,channel-artifacts,docker,scripts,organizations/{peerOrganizations/{hospital.example.com,diagnostic.example.com,provider.example.com},ordererOrganizations/example.com}}
+cd ehr-network
+
+http://localhost:8090/ipfs/<CID>  
+
+  bash ehr_explorer.sh            # auto-sync + full view
+  bash ehr_explorer.sh --state    # auto-sync + world state only
+  bash ehr_explorer.sh --blocks   # auto-sync + block/tx log only
+  bash ehr_explorer.sh --dump     # auto-sync + save to file
+  bash ehr_explorer.sh --force    # re-fetch ALL blocks from scratch
+
+export PATH=$PATH:~/Data/fabric-samples/bin
+export FABRIC_CFG_PATH=~/Data/fabric-samples/config
+
+export FABRIC_CFG_PATH=${HOME}/Data/fabric-samples/config 
+. scripts/envVar.sh
+. scripts/utils.sh
+
+setGlobals 1 , 2 , 3
+
+docker logs -f docker-peer0.hospital.example.com-1 
+peer channel getinfo -c ehrchannel
+peer channel list
+
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+docker compose -f docker/docker-compose-network.yaml up -d
+docker stop $(docker ps -aq) && docker rm $(docker ps -aq)
+
+
+remove channel
+# Stop and remove network containers first
+docker compose -f docker/docker-compose-network.yaml down
+
+# Now remove the volumes
+docker volume rm docker_peer0.hospital.example.com
+docker volume rm docker_peer0.diagnostic.example.com
+docker volume rm docker_peer0.diagnostics.example.com
+docker volume rm docker_peer0.provider.example.com
+docker volume rm docker_orderer.example.com
+
+# Verify gone
+docker volume ls
+
+# Start network back up
+docker compose -f docker/docker-compose-network.yaml up -d
+sleep 3
+
+# Verify channels are clean
+peer channel list
+
+
+BASE_DIR=$PWD
+
+# Fix missing config.yaml for admin users
+for ORG in hospital diagnostic provider; do
+  DOMAIN="${ORG}.example.com"
+  [ "$ORG" == "diagnostic" ] && DOMAIN="diagnostic.example.com"
+
+  MSP_DIR="$BASE_DIR/organizations/peerOrganizations/${DOMAIN}/users/admin/msp"
+  CERT_FILE=$(ls "$MSP_DIR/cacerts/" 2>/dev/null | head -1)
+
+  if [ -n "$CERT_FILE" ]; then
+    cat > "$MSP_DIR/config.yaml" <<EOF
+NodeOUs:
+  Enable: true
+  ClientOUIdentifier:
+    Certificate: cacerts/${CERT_FILE}
+    OrganizationalUnitIdentifier: client
+  PeerOUIdentifier:
+    Certificate: cacerts/${CERT_FILE}
+    OrganizationalUnitIdentifier: peer
+  AdminOUIdentifier:
+    Certificate: cacerts/${CERT_FILE}
+    OrganizationalUnitIdentifier: admin
+  OrdererOUIdentifier:
+    Certificate: cacerts/${CERT_FILE}
+    OrganizationalUnitIdentifier: orderer
+EOF
+    echo "✓ config.yaml created for admin@${DOMAIN}"
+  fi
+done
+
+
+
+
+Now test it. Run these one by one:
+
+**Test 1 — InitLedger as hospitaladmin:**
+```bash
+export FABRIC_CFG_PATH=$PWD/configtx
+export ORGANIZATIONS=$PWD/organizations
+export ORDERER_TLS="$ORGANIZATIONS/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt"
+export H_TLS="$ORGANIZATIONS/peerOrganizations/hospital.example.com/peers/peer0.hospital.example.com/tls/ca.crt"
+export D_TLS="$ORGANIZATIONS/peerOrganizations/diagnostic.example.com/peers/peer0.diagnostic.example.com/tls/ca.crt"
+export P_TLS="$ORGANIZATIONS/peerOrganizations/provider.example.com/peers/peer0.provider.example.com/tls/ca.crt"
+
+export CORE_PEER_TLS_ENABLED=true
+export CORE_PEER_LOCALMSPID="HospitalMSP"
+export CORE_PEER_ADDRESS="localhost:7051"
+export CORE_PEER_MSPCONFIGPATH="$ORGANIZATIONS/peerOrganizations/hospital.example.com/users/hospitaladmin/msp"
+export CORE_PEER_TLS_ROOTCERT_FILE="$H_TLS"
+
+peer chaincode invoke \
+  -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com \
+  --tls --cafile $ORDERER_TLS \
+  -C ehrchannel -n ehr \
+  --peerAddresses localhost:7051 --tlsRootCertFiles $H_TLS \
+  --peerAddresses localhost:8051 --tlsRootCertFiles $D_TLS \
+  --peerAddresses localhost:11051 --tlsRootCertFiles $P_TLS \
+  -c '{"function":"InitLedger","Args":[]}'
+```
+
+**Test 2 — CreateEHRRecord as doctor (should SUCCEED):**
+```bash
+export CORE_PEER_MSPCONFIGPATH="$ORGANIZATIONS/peerOrganizations/hospital.example.com/users/doctor/msp"
+
+peer chaincode invoke \
+  -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com \
+  --tls --cafile $ORDERER_TLS \
+  -C ehrchannel -n ehr \
+  --peerAddresses localhost:7051 --tlsRootCertFiles $H_TLS \
+  --peerAddresses localhost:8051 --tlsRootCertFiles $D_TLS \
+  --peerAddresses localhost:11051 --tlsRootCertFiles $P_TLS \
+  -c '{"function":"CreateEHRRecord","Args":["EHR001","PAT001","John Doe","1990-01-15","Male","O+","[\"Penicillin\"]","[\"Diabetes\"]"]}'
+```
+
+**Test 3 — CreateEHRRecord as nurse (should FAIL — access denied):**
+```bash
+export CORE_PEER_MSPCONFIGPATH="$ORGANIZATIONS/peerOrganizations/hospital.example.com/users/nurse/msp"
+
+peer chaincode invoke \
+  -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com \
+  --tls --cafile $ORDERER_TLS \
+  -C ehrchannel -n ehr \
+  --peerAddresses localhost:7051 --tlsRootCertFiles $H_TLS \
+  --peerAddresses localhost:8051 --tlsRootCertFiles $D_TLS \
+  --peerAddresses localhost:11051 --tlsRootCertFiles $P_TLS \
+  -c '{"function":"CreateEHRRecord","Args":["EHR002","PAT001","John Doe","1990-01-15","Male","O+","[]","[]"]}'
+```
+
+**Test 4 — ReadEHRRecord as labtechnician (should SUCCEED):**
+```bash
+export CORE_PEER_LOCALMSPID="DiagnosticsMSP"
+export CORE_PEER_ADDRESS="localhost:8051"
+export CORE_PEER_MSPCONFIGPATH="$ORGANIZATIONS/peerOrganizations/diagnostic.example.com/users/labtechnician/msp"
+export CORE_PEER_TLS_ROOTCERT_FILE="$D_TLS"
+
+peer chaincode query \
+  -C ehrchannel -n ehr \
+  -c '{"function":"ReadEHRRecord","Args":["EHR001"]}'
+```
+
+**Test 5 — CreateLabResult as labtechnician (should SUCCEED):**
+```bash
+peer chaincode invoke \
+  -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com \
+  --tls --cafile $ORDERER_TLS \
+  -C ehrchannel -n ehr \
+  --peerAddresses localhost:7051 --tlsRootCertFiles $H_TLS \
+  --peerAddresses localhost:8051 --tlsRootCertFiles $D_TLS \
+  --peerAddresses localhost:11051 --tlsRootCertFiles $P_TLS \
+  -c '{"function":"CreateLabResult","Args":["LAB001","PAT001","EHR001","Blood","{\"hemoglobin\":\"14.5\"}","Normal"]}'
+```
+
+**Test 6 — CreateLabResult as insuranceofficer (should FAIL):**
+```bash
+export CORE_PEER_LOCALMSPID="ProviderMSP"
+export CORE_PEER_ADDRESS="localhost:11051"
+export CORE_PEER_MSPCONFIGPATH="$ORGANIZATIONS/peerOrganizations/provider.example.com/users/insuranceofficer/msp"
+export CORE_PEER_TLS_ROOTCERT_FILE="$P_TLS"
+
+peer chaincode invoke \
+  -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com \
+  --tls --cafile $ORDERER_TLS \
+  -C ehrchannel -n ehr \
+  --peerAddresses localhost:7051 --tlsRootCertFiles $H_TLS \
+  --peerAddresses localhost:8051 --tlsRootCertFiles $D_TLS \
+  --peerAddresses localhost:11051 --tlsRootCertFiles $P_TLS \
+  -c '{"function":"CreateLabResult","Args":["LAB002","PAT001","EHR001","Urine","{}","test"]}'
+```
+
+Paste all 6 outputs.
+
+
+MSPDir: ../organizations/peerOrganizations/hospital.example.com/msp
+```
+...only need the `msp/` subfolder (cacerts, admincerts, config.yaml) — **not** the private keys. So no IP changes needed there.
+
+---
+
+## 2. The real concern — what's actually in MSP folders
+
+You're right to question this. Here's the critical distinction:
+```
+organizations/
+├── peerOrganizations/
+│   ├── hospital.example.com/
+│   │   ├── msp/              ← PUBLIC only (cacerts, config.yaml)
+│   │   ├── peers/
+│   │   │   └── peer0/
+│   │   │       ├── msp/      ← peer's own cert + private key  ✓ safe on VM1
+│   │   │       └── tls/      ← peer's own TLS cert + key      ✓ safe on VM1
+│   │   └── users/
+│   │       ├── hospitaladmin/msp/   ← private key             ✓ safe on VM1
+│   │       └── doctor/msp/          ← private key             ✓ safe on VM1
+│   │
+│   └── diagnostic.example.com/
+│       ├── msp/              ← PUBLIC only                    ✓ needed on VM1
+│       ├── peers/
+│       │   └── peer0/
+│       │       ├── msp/      ← diag peer's private key        ⚠ sensitive
+│       │       └── tls/      ← diag peer's TLS key            ⚠ sensitive
+│       └── users/
+│           └── labadmin/msp/ ← labadmin's private key         ⚠ sensitive
+```
+
+---
+
+## What each VM actually needs
+
+| Folder | VM1 needs? | VM2 needs? | Contains private key? |
+|--------|-----------|-----------|----------------------|
+| `hospital.example.com/msp/` | ✅ full | ✅ public only | ❌ |
+| `hospital.example.com/peers/peer0/` | ✅ full | ❌ not needed | ✅ |
+| `hospital.example.com/users/` | ✅ full | ❌ not needed | ✅ |
+| `diagnostic.example.com/msp/` | ✅ public only | ✅ full | ❌ |
+| `diagnostic.example.com/peers/peer0/` | ❌ not needed | ✅ full | ✅ |
+| `diagnostic.example.com/users/` | ❌ not needed | ✅ full | ✅ |
+| `provider.example.com/` | same as diagnostics | same as diagnostics | ✅ |
+| `ordererOrganizations/` | ✅ full | ✅ public only (tlscacerts) | ✅ on VM1 only |
+
+---
+
+## What "public only" means — the org-level `msp/` folder
+
+The **org-level** `msp/` folder (not the peer/user msp) only ever has:
+```
+msp/
+├── cacerts/        ← CA's public certificate
+├── tlscacerts/     ← TLS CA's public certificate  
+├── admincerts/     ← admin's public certificate (optional)
+└── config.yaml     ← OU config
+
+
+vm1 ip : 192.168.63.29
+vm2 ip ; 192.168.63.239
+
+
+Enroll Error
+# 1. Stop CAs
+docker compose -f docker/docker-compose-ca.yaml down -v
+
+# 2. Wipe organizations completely
+rm -rf organizations/
+
+# 3. Recreate the CA mount directories WITH correct permissions
+mkdir -p organizations/ordererOrganizations/example.com/ca
+mkdir -p organizations/peerOrganizations/hospital.example.com/ca
+mkdir -p organizations/peerOrganizations/diagnostic.example.com/ca
+mkdir -p organizations/peerOrganizations/provider.example.com/ca
+
+# 4. Start CAs fresh — they will generate new ca-cert.pem into the mounted dirs
+docker compose -f docker/docker-compose-ca.yaml up -d
+sleep 10
+
+# 5. Verify ca-cert.pem was auto-generated by CA into the mounted dir
+ls organizations/ordererOrganizations/example.com/ca/
+ls organizations/peerOrganizations/hospital.example.com/ca/
+
+# 6. Now enroll
+bash scripts/enroll.sh
+
+
+Install chaincode on peer 2 and 3
+cd ~/Data/fabric-samples/ehr_test_6/ehr-network
+
+export FABRIC_CFG_PATH=${PWD}/configtx
+export CORE_PEER_TLS_ENABLED=true
+export ORDERER_TLS=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/tlscacerts/tls-localhost-7054-ca-orderer.pem
+export HOSP_ADMIN=${PWD}/organizations/peerOrganizations/hospital.example.com/users/hospitaladmin/msp
+export PEER0_HOSP_TLS=${PWD}/organizations/peerOrganizations/hospital.example.com/peers/peer0.hospital.example.com/tls/ca.crt
+export PEER1_HOSP_TLS=${PWD}/organizations/peerOrganizations/hospital.example.com/peers/peer1.hospital.example.com/tls/ca.crt
+export PEER2_HOSP_TLS=${PWD}/organizations/peerOrganizations/hospital.example.com/peers/peer2.hospital.example.com/tls/ca.crt
+
+# Get the current package (version 1.1)
+CC_PACKAGE=$(ls channel-artifacts/ehr_1.1.tar.gz 2>/dev/null || ls channel-artifacts/ehr_1.0.tar.gz)
+echo "Using package: $CC_PACKAGE"
+
+# Install on peer1 (Doctor peer)
+CORE_PEER_LOCALMSPID=HospitalMSP \
+CORE_PEER_ADDRESS=localhost:9051 \
+CORE_PEER_MSPCONFIGPATH=$HOSP_ADMIN \
+CORE_PEER_TLS_ROOTCERT_FILE=$PEER1_HOSP_TLS \
+peer lifecycle chaincode install $CC_PACKAGE && echo "✓ peer1 installed"
+
+# Install on peer2 (Nurse/Pharma peer)
+CORE_PEER_LOCALMSPID=HospitalMSP \
+CORE_PEER_ADDRESS=localhost:10051 \
+CORE_PEER_MSPCONFIGPATH=$HOSP_ADMIN \
+CORE_PEER_TLS_ROOTCERT_FILE=$PEER2_HOSP_TLS \
+peer lifecycle chaincode install $CC_PACKAGE && echo "✓ peer2 installed"
+
+
+See content of each block
+cd ~/Data/fabric-samples/ehr_test_6/ehr-network
+
+export FABRIC_CFG_PATH=~/Data/fabric-samples/config
+export CORE_PEER_TLS_ENABLED=true
+export CORE_PEER_LOCALMSPID=HospitalMSP
+export CORE_PEER_ADDRESS=localhost:7051
+export CORE_PEER_TLS_ROOTCERT_FILE=$(pwd)/organizations/peerOrganizations/hospital.example.com/peers/peer0.hospital.example.com/tls/ca.crt
+export CORE_PEER_MSPCONFIGPATH=$(pwd)/organizations/peerOrganizations/hospital.example.com/users/hospitaladmin/msp
+
+# Fetch a specific block by number (e.g. block 5)
+peer channel fetch 5 block5.pb -c ehrchannel \
+  -o localhost:7050 \
+  --ordererTLSHostnameOverride orderer.example.com \
+  --tls --cafile $(pwd)/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/tlscacerts/tls-localhost-7054-ca-orderer.pem
+
+# Fetch the latest block
+peer channel fetch newest latest.pb -c ehrchannel \
+  -o localhost:7050 \
+  --ordererTLSHostnameOverride orderer.example.com \
+  --tls --cafile $(pwd)/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/tlscacerts/tls-localhost-7054-ca-orderer.pem
+
+# Decode the block to JSON
+configtxlator proto_decode \
+  --input block5.pb \
+  --type common.Block \
+  --output block5.json
+
+# Pretty print
+cat block5.json | jq .
+
+
+2508
+
+
+forwarding logs in patient visit section also
+

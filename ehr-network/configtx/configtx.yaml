@@ -1,0 +1,178 @@
+---
+Organizations:
+
+  - &OrdererOrg
+    Name: OrdererMSP
+    ID: OrdererMSP
+    MSPDir: ../organizations/ordererOrganizations/example.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('OrdererMSP.admin')"
+    OrdererEndpoints:
+      - orderer.example.com:7050
+
+  - &Hospital
+    Name: HospitalMSP
+    ID: HospitalMSP
+    MSPDir: ../organizations/peerOrganizations/hospital.example.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('HospitalMSP.admin', 'HospitalMSP.peer', 'HospitalMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('HospitalMSP.admin', 'HospitalMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('HospitalMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('HospitalMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.hospital.example.com
+        Port: 7051
+
+  - &Diagnostics
+    Name: DiagnosticsMSP
+    ID: DiagnosticsMSP
+    MSPDir: ../organizations/peerOrganizations/diagnostic.example.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('DiagnosticsMSP.admin', 'DiagnosticsMSP.peer', 'DiagnosticsMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('DiagnosticsMSP.admin', 'DiagnosticsMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('DiagnosticsMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('DiagnosticsMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.diagnostic.example.com
+        Port: 8051
+
+  - &Provider
+    Name: ProviderMSP
+    ID: ProviderMSP
+    MSPDir: ../organizations/peerOrganizations/provider.example.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('ProviderMSP.admin', 'ProviderMSP.peer', 'ProviderMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('ProviderMSP.admin', 'ProviderMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('ProviderMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('ProviderMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.provider.example.com
+        Port: 11051
+
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_5: true
+
+Application: &ApplicationDefaults
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    LifecycleEndorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+    Endorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  OrdererType: etcdraft
+  Addresses:
+    - orderer.example.com:7050
+  EtcdRaft:
+    Consenters:
+      - Host: orderer.example.com
+        Port: 7050
+        # These must be the TLS certs — path is relative to configtx/ directory
+        ClientTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+        ServerTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 512 KB
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    BlockValidation:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+  Capabilities:
+    <<: *OrdererCapabilities
+
+Channel: &ChannelDefaults
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+
+  EHRChannel:
+    Consortium: EHRConsortium
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *OrdererOrg
+      Capabilities:
+        <<: *OrdererCapabilities
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *Hospital
+        - *Diagnostics
+        - *Provider
+      Capabilities:
+        <<: *ApplicationCapabilities

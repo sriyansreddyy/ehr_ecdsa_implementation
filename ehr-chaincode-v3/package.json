@@ -1,0 +1,13 @@
+{
+  "name": "ehr-chaincode-v2",
+  "version": "2.0.0",
+  "description": "EHR Blockchain Chaincode — Visit-based model",
+  "main": "index.js",
+  "scripts": {
+    "start": "fabric-chaincode-node start"
+  },
+  "dependencies": {
+    "fabric-contract-api": "^2.5.8",
+    "fabric-shim": "^2.5.8"
+  }
+}

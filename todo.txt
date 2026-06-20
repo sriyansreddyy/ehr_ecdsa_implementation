@@ -1,0 +1,697 @@
+ 1) create a seperate visit record, each visit record should contain all information of that visit
+ 2) seperate health record for each visit and patient all visit records should be mapped to patient, patient should be also to see all records
+ 3) consent management - patient should be able to provide access and revoke access to any other roles
+ 4) No strict flow, assigend nurse can be changed, assigent doctor can be changed, doctor can write prescription and forward to lab any number of time within same visit untill doctor marks diagonised
+ 5) nurse will record vitals, and their should be system of forwarding, nurse can forward to dr, dr can forward to nurse with some instructions any number of time, dr can forward to lab with instructions any number of time etc
+ 6) EHR template, img to template
+ 7) aggregate signature 
+ 8) IPFS integration
+ 9) peer wise restriction, dr can't connect to peer 1 and nurse connect to peer 0, need to demonstrate in UI level, backend level and chaincode level
+ 9) Descriptive logs in UI level, backend level and chaincode level with transcation hash and signature
+ 10) Check validity and integrity at system level, visit level etc
+ 11) patient dashbaord, patient user
+ 12) Register dr, nusre etc
+ 
+ Issues:
+ 1) EHR update require json format
+ 
+ 
+ 
+ 
+ 
+ RECEPTIONIST
+    │ OpenVisit()
+    ▼
+DOCTOR ◄──────────────────────────────────────────┐
+    │                                              │
+    ├─ ForwardToNurse(instructions)                │
+    │       │                                      │
+    │       ▼                                      │
+    │     NURSE                                    │
+    │       │ RecordVitals()                       │
+    │       │ UpdateCareNotes()                    │
+    │       └─ ForwardToDoctor(notes) ─────────────┘
+    │
+    ├─ ForwardToLab(tests, instructions)           │
+    │       │                                      │
+    │       ▼                                      │
+    │    LAB RECEPTIONIST                          │
+    │       │ AcknowledgeLabRequest()              │
+    │       ▼                                      │
+    │    LAB TECHNICIAN / RADIOLOGIST              │
+    │       │ SubmitLabResult()                    │
+    │       ▼                                      │
+    │    LAB SUPERVISOR                            │
+    │       │ ApproveLabResult()                   │
+    │       └─ ResultsBackToDoctor ────────────────┘
+    │                                              
+    ├─ UpdatePrescription() ← any number of times
+    ├─ AddDiagnosisNotes()  ← any number of times
+    │
+    └─ FinalizeVisit()  ← DOCTOR closes visit
+            │
+            ▼
+    MEDICAL RECORDS OFFICER
+            │ FinalizeRecord()
+            ▼
+    BILLING OFFICER
+            │ SubmitClaim()
+            ...insurance flow continues
+            
+            
+ // 1. PATIENT — master record, never changes
+Patient {
+  patientId:    "PAT-001",
+  name:         "John Doe",
+  age:          35,
+  gender:       "Male",
+  bloodGroup:   "O+",
+  contact:      "9999999999",
+  address:      "...",
+  registeredBy: "receptionist1",
+  registeredAt: "2024-01-01",
+  visitIds:     ["PAT-001-V1", "PAT-001-V2"]  // all visits
+}
+
+// 2. VISIT — one per hospital visit, full lifecycle
+Visit {
+  visitId:      "PAT-001-V1",
+  patientId:    "PAT-001",
+  visitNumber:  1,
+
+  // Status
+  status: "OPEN" | "WITH_DOCTOR" | "WITH_NURSE" |
+          "WITH_LAB" | "FINALIZED" | "CLOSED",
+
+  // Assignments (can change)
+  assignedDoctor: "doctor1",
+  assignedNurse:  "nurse1",
+
+  // Forwarding history (append-only array)
+  forwardingLog: [
+    {
+      from:         "receptionist1",
+      to:           "doctor1",
+      role:         "doctor",
+      action:       "ASSIGNED",
+      instructions: "New patient registration",
+      timestamp:    "..."
+    },
+    {
+      from:         "doctor1",
+      to:           "nurse1",
+      role:         "nurse",
+      action:       "FORWARD_TO_NURSE",
+      instructions: "Record vitals, check BP",
+      timestamp:    "..."
+    },
+    {
+      from:         "nurse1",
+      to:           "doctor1",
+      role:         "doctor",
+      action:       "FORWARD_TO_DOCTOR",
+      instructions: "BP: 140/90, Temp: 99F",
+      timestamp:    "..."
+    },
+    {
+      from:         "doctor1",
+      to:           "lab",
+      role:         "lab",
+      action:       "FORWARD_TO_LAB",
+      instructions: "Blood Sugar, HbA1c",
+      timestamp:    "..."
+    }
+  ],
+
+  // Clinical data
+  chiefComplaint:  "Headache and fatigue",
+  diagnosisNotes:  "...",          // doctor updates multiple times
+  finalDiagnosis:  "Type 2 Diabetes",
+
+  // Vitals (nurse records, can update)
+  vitals: {
+    bloodPressure: "140/90",
+    temperature:   "99F",
+    pulse:         "88bpm",
+    weight:        "75kg",
+    height:        "175cm",
+    oxygenSat:     "98%",
+    recordedBy:    "nurse1",
+    recordedAt:    "..."
+  },
+
+  // Prescriptions (array — each update adds new entry)
+  prescriptions: [
+    {
+      medications: ["Metformin 500mg", "Glipizide 5mg"],
+      instructions: "Take after meals",
+      prescribedBy: "doctor1",
+      prescribedAt: "...",
+      version:      1
+    }
+  ],
+
+  // Lab requests (multiple allowed)
+  labRequests: [
+    {
+      labRequestId:    "PAT-001-V1-L1",
+      tests:           ["Blood Sugar", "HbA1c"],
+      instructions:    "Fasting sample",
+      requestedBy:     "doctor1",
+      requestedAt:     "...",
+      status:          "APPROVED",
+      acknowledgedBy:  "labreceptionist1",
+      results:         { "Blood Sugar": "180mg/dL", "HbA1c": "7.2%" },
+      submittedBy:     "labtech1",
+      approvedBy:      "labsupervisor1",
+      resultsHash:     "sha256:..."
+    }
+  ],
+
+  // Nurse care notes (multiple allowed)
+  careNotes: [
+    {
+      note:       "Patient comfortable, medication given",
+      recordedBy: "nurse1",
+      recordedAt: "..."
+    }
+  ],
+
+  // Close
+  finalizedBy:      "doctor1",
+  finalizedAt:      "...",
+  medicationDispensedBy: "pharmacist1",
+  recordFinalizedBy: "medrecordofficer1",
+
+  // Insurance
+  claimId:          "CLM-001",
+  claimAmount:      15000,
+  claimStatus:      "APPROVED",
+
+  createdAt:        "...",
+  updatedAt:        "..."
+}
+```
+
+---
+
+## Revised Chaincode Functions
+```
+PATIENT MANAGEMENT
+  RegisterPatient(patientId, name, age, gender, bloodGroup, contact, address)
+  GetPatient(patientId)
+  GetPatientVisits(patientId)    ← all visits for a patient
+
+VISIT MANAGEMENT
+  OpenVisit(patientId, chiefComplaint)            ← receptionist
+  AssignDoctor(visitId, doctorId)                 ← receptionist / admin
+  AssignNurse(visitId, nurseId)                   ← receptionist / doctor / admin
+  CloseVisit(visitId)                             ← doctor (finalizes clinical)
+
+FORWARDING
+  ForwardToNurse(visitId, instructions)           ← doctor
+  ForwardToDoctor(visitId, notes)                 ← nurse
+  ForwardToLab(visitId, tests, instructions)      ← doctor
+  LabResultsBack(visitId, labRequestId)           ← auto when lab approves
+
+CLINICAL
+  UpdateDiagnosisNotes(visitId, notes)            ← doctor (any time)
+  RecordVitals(visitId, vitalsJson)               ← nurse
+  AddCareNote(visitId, note)                      ← nurse
+  UpdatePrescription(visitId, medications, instructions) ← doctor
+
+LAB (per labRequest within a visit)
+  AcknowledgeLabRequest(visitId, labRequestId)    ← labreceptionist
+  SubmitLabResult(visitId, labRequestId, results) ← labtechnician/radiologist
+  ApproveLabResult(visitId, labRequestId)         ← labsupervisor
+
+DISCHARGE & RECORDS
+  DispenseMedication(visitId, details)            ← pharmacist
+  FinalizeRecord(visitId)                         ← medrecordofficer
+  DischargePatient(visitId, notes)                ← hospitaladmin
+
+INSURANCE
+  SubmitClaim(visitId, claimId, amount)           ← billingofficer
+  AuditClaim(visitId, notes)                      ← claimsauditor
+  ProcessClaim(visitId, decision, reason)         ← insuranceofficer
+
+PATIENT PORTAL (read-only)
+  GetVisit(visitId)
+  GetPatientVisits(patientId)
+  GetVisitHistory(visitId)       ← full blockchain audit trail
+```
+
+---
+
+## Visit Status State Machine
+```
+OPEN
+  └─► WITH_DOCTOR          (AssignDoctor)
+        ├─► WITH_NURSE      (ForwardToNurse)
+        │     └─► WITH_DOCTOR (ForwardToDoctor)  ← back and forth freely
+        ├─► WITH_LAB        (ForwardToLab)
+        │     └─► WITH_DOCTOR (lab results back) ← auto-return
+        └─► VISIT_FINALIZED (doctor FinalizeVisit)
+              └─► RECORD_FINALIZED (medrecordofficer)
+                    └─► CLAIM_SUBMITTED → CLAIM_APPROVED/REJECTED
+                          └─► DISCHARGED
+```
+
+---
+
+## Patient Portal
+```
+Patient Registration in DB:
+  { patientId: "PAT-001", username: "john.doe", passwordHash: "..." }
+
+Patient Login Flow:
+  1. POST /patient/auth/login  → returns JWT with patientId
+  2. GET  /patient/visits       → all visits for this patientId
+  3. GET  /patient/visits/:id   → full visit detail
+  4. GET  /patient/visits/:id/history → blockchain audit trail
+
+Patient sees:
+  - All their visits (date, doctor, diagnosis)
+  - Vitals from each visit
+  - Lab results
+  - Prescriptions
+  - Claim status
+  - But NOT internal notes between staff
+```
+
+---
+
+## Summary of What Changes
+```
+CHAINCODE     → Complete rewrite (visit-based model)
+BACKEND APIs  → New endpoints for visits, forwarding, patient portal
+FRONTEND      → Updated hospital/diagnostics/provider UIs + new patient portal
+DATABASE      → Small MongoDB/SQLite for patient portal logins only
+
+
+
+Flow Order
+
+  Admin Setup → Patient Registration → Visit Lifecycle → Doctor Flow → Nurse Flow → Lab → Pharmacy → Medical Records → Patient Portal (Consent +
+  OCR)
+
+  ---
+  1. Hospital Admin Login
+
+  ┌──────────┬────────────────┐
+  │  Field   │     Value      │
+  ├──────────┼────────────────┤
+  │ Role     │ Hospital Admin │
+  ├──────────┼────────────────┤
+  │ Username │ hospitaladmin  │
+  ├──────────┼────────────────┤
+  │ Password │ admin123       │
+  └──────────┴────────────────┘
+
+  ---
+  2. Add Staff (do this first so staff exist for assignment)
+
+  Doctor:
+
+  ┌──────────┬───────────┐
+  │  Field   │   Value   │
+  ├──────────┼───────────┤
+  │ Role     │ Doctor    │
+  ├──────────┼───────────┤
+  │ Username │ dr_arjun  │
+  ├──────────┼───────────┤
+  │ Password │ doctor123 │
+  └──────────┴───────────┘
+
+  Nurse:
+
+  ┌──────────┬─────────────┐
+  │  Field   │    Value    │
+  ├──────────┼─────────────┤
+  │ Role     │ Nurse       │
+  ├──────────┼─────────────┤
+  │ Username │ nurse_priya │
+  ├──────────┼─────────────┤
+  │ Password │ nurse123    │
+  └──────────┴─────────────┘
+
+  Pharmacist:
+
+  ┌──────────┬─────────────────┐
+  │  Field   │      Value      │
+  ├──────────┼─────────────────┤
+  │ Role     │ Pharmacist      │
+  ├──────────┼─────────────────┤
+  │ Username │ pharmacist_ravi │
+  ├──────────┼─────────────────┤
+  │ Password │ pharma123       │
+  └──────────┴─────────────────┘
+
+  Medical Records:
+
+  ┌──────────┬─────────────────┐
+  │  Field   │      Value      │
+  ├──────────┼─────────────────┤
+  │ Role     │ Medical Records │
+  ├──────────┼─────────────────┤
+  │ Username │ medrecords_sita │
+  ├──────────┼─────────────────┤
+  │ Password │ records123      │
+  └──────────┴─────────────────┘
+
+  ---
+  3. Receptionist Login → Register Patient
+
+  ┌──────────┬──────────────┐
+  │  Field   │    Value     │
+  ├──────────┼──────────────┤
+  │ Role     │ Receptionist │
+  ├──────────┼──────────────┤
+  │ Username │ receptionist │
+  ├──────────┼──────────────┤
+  │ Password │ recept123    │
+  └──────────┴──────────────┘
+
+  Register Patient Form:
+
+  ┌─────────────┬───────────────────────────────────┐
+  │    Field    │               Value               │
+  ├─────────────┼───────────────────────────────────┤
+  │ Patient ID  │ PAT-2026-001                      │
+  ├─────────────┼───────────────────────────────────┤
+  │ Full Name   │ Rahul Mehta                       │
+  ├─────────────┼───────────────────────────────────┤
+  │ Age         │ 34                                │
+  ├─────────────┼───────────────────────────────────┤
+  │ Gender      │ Male                              │
+  ├─────────────┼───────────────────────────────────┤
+  │ Blood Group │ B+                                │
+  ├─────────────┼───────────────────────────────────┤
+  │ Contact     │ 9876543210                        │
+  ├─────────────┼───────────────────────────────────┤
+  │ Address     │ 42, MG Road, Bangalore, KA 560001 │
+  └─────────────┴───────────────────────────────────┘
+
+  ---
+  4. Open Visit
+
+  ┌─────────────────┬─────────────────────────────────────────────────────────────────┐
+  │      Field      │                              Value                              │
+  ├─────────────────┼─────────────────────────────────────────────────────────────────┤
+  │ Patient ID      │ PAT-2026-001                                                    │
+  ├─────────────────┼─────────────────────────────────────────────────────────────────┤
+  │ Chief Complaint │ Persistent fever for 3 days with severe headache and body aches │
+  └─────────────────┴─────────────────────────────────────────────────────────────────┘
+
+  ---
+  5. Assign Doctor
+
+  ┌────────┬──────────┐
+  │ Field  │  Value   │
+  ├────────┼──────────┤
+  │ Doctor │ dr_arjun │
+  └────────┴──────────┘
+
+  ---
+  6. Doctor Login → Diagnosis & Prescription
+
+  Login:
+
+  ┌──────────┬───────────┐
+  │  Field   │   Value   │
+  ├──────────┼───────────┤
+  │ Role     │ Doctor    │
+  ├──────────┼───────────┤
+  │ Username │ dr_arjun  │
+  ├──────────┼───────────┤
+  │ Password │ doctor123 │
+  └──────────┴───────────┘
+
+  Diagnosis Modal:
+
+  ┌──────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │    Field     │                                                           Value                                                           │
+  ├──────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Diagnosis    │ Patient presents with high-grade fever (102°F), retro-orbital headache, myalgia, and mild rash on trunk. Clinical picture │
+  │ Notes        │  consistent with Dengue Fever. Awaiting NS1 antigen and CBC confirmation.                                                 │
+  └──────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  Prescription Modal:
+
+  ┌──────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │    Field     │                                                 Value                                                 │
+  ├──────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Medication 1 │ Paracetamol 500mg — 1 tab every 6 hours for fever                                                     │
+  ├──────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Medication 2 │ ORS sachets — 1 sachet in 200ml water every 4 hours                                                   │
+  ├──────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Medication 3 │ Pantoprazole 40mg — 1 tab before breakfast                                                            │
+  ├──────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Instructions │ Avoid NSAIDs (Aspirin, Ibuprofen). Plenty of oral fluids. Rest advised. Monitor platelet count daily. │
+  └──────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  Lab Order Modal:
+
+  ┌──────────────┬──────────────────────────────────────────────────────┐
+  │    Field     │                        Value                         │
+  ├──────────────┼──────────────────────────────────────────────────────┤
+  │ Tests        │ CBC Dengue NS1 Dengue IgM/IgG                        │
+  ├──────────────┼──────────────────────────────────────────────────────┤
+  │ Instructions │ Urgent. Fasting not required. Report within 4 hours. │
+  └──────────────┴──────────────────────────────────────────────────────┘
+
+  Forward to Nurse:
+
+  ┌──────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │    Field     │                                                           Value                                                            │
+  ├──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Instructions │ Record vitals every 4 hours. Monitor for bleeding signs. Administer Paracetamol 500mg if temp exceeds 101°F. Ensure        │
+  │              │ adequate hydration.                                                                                                        │
+  └──────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  ---
+  7. Nurse Login → Vitals & Care Note
+
+  Login:
+
+  ┌──────────┬─────────────┐
+  │  Field   │    Value    │
+  ├──────────┼─────────────┤
+  │ Role     │ Nurse       │
+  ├──────────┼─────────────┤
+  │ Username │ nurse_priya │
+  ├──────────┼─────────────┤
+  │ Password │ nurse123    │
+  └──────────┴─────────────┘
+
+  Vitals Recording:
+
+  ┌────────────────┬─────────────┐
+  │     Field      │    Value    │
+  ├────────────────┼─────────────┤
+  │ Blood Pressure │ 108/70 mmHg │
+  ├────────────────┼─────────────┤
+  │ Temperature    │ 102.4°F     │
+  ├────────────────┼─────────────┤
+  │ Pulse Rate     │ 96 bpm      │
+  ├────────────────┼─────────────┤
+  │ SpO₂           │ 97%         │
+  ├────────────────┼─────────────┤
+  │ Weight         │ 68 kg       │
+  ├────────────────┼─────────────┤
+  │ Height         │ 172 cm      │
+  └────────────────┴─────────────┘
+
+  Care Note:
+
+  ┌─────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │  Field  │                                                             Value                                                              │
+  ├─────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Care    │ Patient alert and oriented. Skin warm and flushed. Mild petechiae noted on lower limbs. IV access established, fluids running  │
+  │ Note    │ at 80ml/hr. Patient tolerated Paracetamol 500mg PO at 14:30 hrs. No active bleeding. Patient advised bed rest.                 │
+  └─────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  Request EHR Access:
+
+  ┌────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │       Field        │                                              Value                                              │
+  ├────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Sections Requested │ ehr, prescriptions                                                                              │
+  ├────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Reason             │ Need to review patient's allergy history and ongoing medications before administering treatment │
+  └────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  Forward Back to Doctor:
+
+  ┌────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │     Field      │                                                         Value                                                          │
+  ├────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Handover Notes │ Vitals recorded. Petechiae observed on lower limbs. Lab samples collected and sent. Patient stable, IV fluids running. │
+  └────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  ---
+  8. Doctor → Finalize Visit + Update EHR
+
+  Finalize Visit:
+
+  ┌────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │     Field      │                                                          Value                                                          │
+  ├────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Final          │ Dengue Fever — NS1 Antigen Positive, CBC showing thrombocytopenia (Platelets: 85,000/μL). Patient responding to         │
+  │ Diagnosis      │ supportive care.                                                                                                        │
+  └────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  EHR Edit — after patient grants consent (step 11 below):
+
+  Allergies:
+
+  ┌──────────┬───────────────────────────────────┐
+  │  Field   │               Value               │
+  ├──────────┼───────────────────────────────────┤
+  │ Allergy  │ Aspirin                           │
+  ├──────────┼───────────────────────────────────┤
+  │ Severity │ High                              │
+  ├──────────┼───────────────────────────────────┤
+  │ Reaction │ GI bleeding, platelet dysfunction │
+  └──────────┴───────────────────────────────────┘
+
+  Chronic Conditions:
+
+  ┌───────────┬───────────────┐
+  │   Field   │     Value     │
+  ├───────────┼───────────────┤
+  │ Condition │ None          │
+  ├───────────┼───────────────┤
+  │ Since     │ (leave blank) │
+  └───────────┴───────────────┘
+
+  Medical History:
+
+  ┌───────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │     Field     │                                                     Value                                                      │
+  ├───────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Clinical Info │ Dengue Fever — NS1 Positive. Platelet nadir 85,000. Managed with IV fluids and supportive care. Full recovery. │
+  ├───────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Report Date   │ 2026-04-21                                                                                                     │             
+  ├───────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤             
+  │ Diagnosis     │ Dengue Fever (NS1 Antigen Positive)                                                                            │             
+  ├───────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤             
+  │ Treatment     │ IV fluids, Paracetamol, ORS, Pantoprazole                                                                      │
+  ├───────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤             
+  │ Physician     │ dr_arjun                                                                                                       │
+  ├───────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤             
+  │ Facility      │ City General Hospital                                                                                          │
+  ├───────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤             
+  │ Source        │ MANUAL                                                                                                         │
+  └───────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘             
+                  
+  ---
+  9. Pharmacist Login → Dispense Medication
+
+  Login:
+
+  ┌──────────┬─────────────────┐                                                                                                                 
+  │  Field   │      Value      │
+  ├──────────┼─────────────────┤                                                                                                                 
+  │ Role     │ Pharmacist      │
+  ├──────────┼─────────────────┤
+  │ Username │ pharmacist_ravi │
+  ├──────────┼─────────────────┤
+  │ Password │ pharma123       │
+  └──────────┴─────────────────┘
+
+  Dispense Details:
+
+  ┌───────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │     Field     │                                                          Value                                                           │
+  ├───────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Dispense      │ Dispensed: Paracetamol 500mg x20 tabs, ORS sachets x10, Pantoprazole 40mg x7 tabs. Counselled patient on dosage schedule │
+  │ Details       │  and to avoid NSAIDs. Dispensed on 21-Apr-2026 at 16:45 hrs.                                                             │
+  └───────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘   
+   
+  ---                                                                                                                                            
+  10. Medical Records Login → Finalize Record
+                                                                                                                                                 
+  Login:
+                                                                                                                                                 
+  ┌──────────┬─────────────────┐
+  │  Field   │      Value      │
+  ├──────────┼─────────────────┤
+  │ Role     │ Medical Records │
+  ├──────────┼─────────────────┤
+  │ Username │ medrecords_sita │
+  ├──────────┼─────────────────┤
+  │ Password │ records123      │
+  └──────────┴─────────────────┘
+
+  (Finalize Record is a confirmation click — no text fields)                                                                                     
+   
+  ---                                                                                                                                            
+  11. Patient Portal — Register & Grant Consent
+                                                                                                                                                 
+  Patient Register:
+                                                                                                                                                 
+  ┌─────────────────┬───────────────────────┐
+  │      Field      │         Value         │
+  ├─────────────────┼───────────────────────┤
+  │ Patient ID      │ PAT-2026-001          │
+  ├─────────────────┼───────────────────────┤
+  │ Create Password │ patient123            │                                                                                                    
+  ├─────────────────┼───────────────────────┤
+  │ Email           │ rahul.mehta@gmail.com │                                                                                                    
+  ├─────────────────┼───────────────────────┤
+  │ Phone           │ 9876543210            │
+  └─────────────────┴───────────────────────┘
+
+  Grant Access to Doctor:                                                                                                                        
+   
+  ┌──────────────┬────────────────────────────────────────┐                                                                                      
+  │    Field     │                 Value                  │
+  ├──────────────┼────────────────────────────────────────┤
+  │ Staff Member │ dr_arjun                               │
+  ├──────────────┼────────────────────────────────────────┤
+  │ Sections     │ ehr, visits, prescriptions, labResults │
+  ├──────────────┼────────────────────────────────────────┤                                                                                      
+  │ Expires      │ 2026-04-28 23:59                       │
+  └──────────────┴────────────────────────────────────────┘                                                                                      
+                  
+  Grant Access to Nurse:
+
+  ┌──────────────┬────────────────────┐
+  │    Field     │       Value        │
+  ├──────────────┼────────────────────┤
+  │ Staff Member │ nurse_priya        │
+  ├──────────────┼────────────────────┤
+  │ Sections     │ ehr, prescriptions │                                                                                                          
+  ├──────────────┼────────────────────┤
+  │ Expires      │ 2026-04-28 23:59   │                                                                                                          
+  └──────────────┴────────────────────┘
+
+  ---
+  12. Patient Portal — OCR Import (bonus demo)
+                                                                                                                                                 
+  Upload any medical report image. When the OCR result appears, use these structured fields:
+                                                                                                                                                 
+  ┌─────────────┬──────────────────────────────┐
+  │    Field    │            Value             │                                                                                                 
+  ├─────────────┼──────────────────────────────┤
+  │ patientName │ Rahul Mehta                  │
+  ├─────────────┼──────────────────────────────┤
+  │ date        │ 2026-04-21                   │
+  ├─────────────┼──────────────────────────────┤
+  │ hospital    │ City Diagnostics Lab         │
+  ├─────────────┼──────────────────────────────┤                                                                                                 
+  │ diagnosis   │ Dengue NS1 Antigen: Positive │
+  ├─────────────┼──────────────────────────────┤                                                                                                 
+  │ treatment   │ Supportive care advised      │
+  ├─────────────┼──────────────────────────────┤                                                                                                 
+  │ doctor      │ Dr. Arjun Sharma             │
+  ├─────────────┼──────────────────────────────┤                                                                                                 
+  │ sourceType  │ OCR                          │
+  └─────────────┴──────────────────────────────┘
+
+
+
+
+
+

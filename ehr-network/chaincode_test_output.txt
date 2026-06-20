@@ -1,0 +1,2763 @@
+avi@avi-VMware-Virtual-Platform:~/Data/fabric-samples/ehr_test_6/ehr-network$ ./scripts/test-chaincode-v2.sh 
+
+╔═══════════════════════════════════════════════════════════╗
+║  EHR Chaincode v2 — Verbose Blockchain Test Suite
+╠═══════════════════════════════════════════════════════════╣
+║  Channel        : ehrchannel
+║  Chaincode      : ehr
+║  Orderer        : localhost:7050
+║  Patient ID     : PAT-TEST-1773851416
+║  Start Block    : 47
+║  Started At     : Wed Mar 18 10:00:16 PM IST 2026
+╠═══════════════════════════════════════════════════════════╣
+║  Peers:
+║    peer0.hospital   :7051  → Auth/Reception  (HospitalMSP)
+║    peer1.hospital   :9051  → Doctor          (HospitalMSP)
+║    peer2.hospital   :10051 → Nurse/Pharma    (HospitalMSP)
+║    peer0.diagnostic :8051  → Lab             (DiagnosticsMSP)
+║    peer0.provider   :11051 → Insurance        (ProviderMSP)
+╚═══════════════════════════════════════════════════════════╝
+
+╔══════════════════════════════════════════════════════╗
+║  PRE-FLIGHT CHECK
+╚══════════════════════════════════════════════════════╝
+
+  ▶ Verify all 5 peers are reachable
+  ────────────────────────────────────────────────────
+
+    ✓ peer0.hospital.example.com:7051 (Auth/Reception) — responding
+    ✓ peer1.hospital.example.com:9051 (Doctor) — responding
+    ✓ peer2.hospital.example.com:10051 (Nurse/Pharma) — responding
+    ✓ peer0.diagnostic.example.com:8051 (Lab) — responding
+    ✓ peer0.provider.example.com:11051 (Insurance) — responding
+  ✓ PASS — All 5 peers reachable on channel ehrchannel
+
+╔══════════════════════════════════════════════════════╗
+║  1. PATIENT CONTRACT
+╚══════════════════════════════════════════════════════╝
+
+  ▶ 1.1 Register patient
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 2 — RegisterPatient — receptionist creates PAT-TEST-1773851416 on peer0.hospital
+    Caller Identity
+    ├─ Username    : receptionist
+    ├─ Role        : receptionist
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:7051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m1D08D3222389BDD2B5A8...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 47
+    ├─ Block After  : 48
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▶ 1.2 Read patient
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 3 — GetPatient — name is John Doe
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 48
+    ├─ Field Queried   : .name
+    ├─ Expected        : John Doe
+    └─ Actual          : John Doe
+  ✓ PASS
+
+  ▣ TEST 4 — GetPatient — patientId matches
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 48
+    ├─ Field Queried   : .patientId
+    ├─ Expected        : PAT-TEST-1773851416
+    └─ Actual          : PAT-TEST-1773851416
+  ✓ PASS
+
+  ▣ TEST 5 — GetPatient — visitCount is 0
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 48
+    ├─ jq Expression   : .visitCount
+    ├─ Expected        : 0
+    └─ Actual          : 0
+  ✓ PASS
+
+  ▶ 1.3 PatientExists
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 6 — PatientExists — true for registered patient
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 48
+    ├─ jq Expression   : .
+    ├─ Expected        : true
+    └─ Actual          : true
+  ✓ PASS
+
+  ▣ TEST 7 — PatientExists — false for non-existent
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 48
+    ├─ jq Expression   : .
+    ├─ Expected        : false
+    └─ Actual          : false
+  ✓ PASS
+
+  ▶ 1.4 Duplicate blocked
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 8 — RegisterPatient — duplicate rejected
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : receptionist
+    ├─ Role        : receptionist
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:7051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m1D08D3222389BDD2B5A8...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 48 (unchanged — rejected before commit)
+    ├─ Expected Err : already exists
+    └─ Actual Error : Patient already exists: PAT-TEST-1773851416
+
+  ✓ PASS — Correctly rejected with expected error
+
+  ▶ 1.5 Access control
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 9 — RegisterPatient — doctor blocked
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : doctor
+    ├─ Role        : doctor
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:9051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m098AC40B103657284BB7...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 48 (unchanged — rejected before commit)
+    ├─ Expected Err : Access denied
+    └─ Actual Error : Access denied: role 'doctor' (user: doctor) is not permitted. Required: receptionist or admin
+
+  ✓ PASS — Correctly rejected with expected error
+
+  ▣ TEST 10 — RegisterPatient — labtechnician blocked
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : labtechnician
+    ├─ Role        : labtechnician
+    ├─ MSP ID      : DiagnosticsMSP
+    └─ Peer        : localhost:8051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m21D379CE1ED3E541B498...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 48 (unchanged — rejected before commit)
+    ├─ Expected Err : Access denied
+    └─ Actual Error : Access denied: role 'labtechnician' (user: labtechnician) is not permitted. Required: receptionist or admin
+
+  ✓ PASS — Correctly rejected with expected error
+
+╔══════════════════════════════════════════════════════╗
+║  2. VISIT CONTRACT
+╚══════════════════════════════════════════════════════╝
+
+  ▶ 2.1 Open visit
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 11 — OpenVisit — opens V1 with chief complaint
+    Caller Identity
+    ├─ Username    : receptionist
+    ├─ Role        : receptionist
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:7051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m1D08D3222389BDD2B5A8...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 48
+    ├─ Block After  : 49
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 12 — GetVisit — status is OPEN
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 49
+    ├─ Field Queried   : .status
+    ├─ Expected        : OPEN
+    └─ Actual          : OPEN
+  ✓ PASS
+
+  ▣ TEST 13 — GetVisit — visitId is PAT-TEST-1773851416-V1
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 49
+    ├─ Field Queried   : .visitId
+    ├─ Expected        : PAT-TEST-1773851416-V1
+    └─ Actual          : PAT-TEST-1773851416-V1
+  ✓ PASS
+
+  ▣ TEST 14 — GetVisit — chiefComplaint stored
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 49
+    ├─ Field Queried   : .chiefComplaint
+    ├─ Expected        : Severe headache and high fever for 3 days
+    └─ Actual          : Severe headache and high fever for 3 days
+  ✓ PASS
+
+  ▣ TEST 15 — GetPatient — visitCount is 1
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 49
+    ├─ jq Expression   : .visitCount
+    ├─ Expected        : 1
+    └─ Actual          : 1
+  ✓ PASS
+
+  ▣ TEST 16 — GetPatient — visitIds[0] is V1
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 49
+    ├─ jq Expression   : .visitIds[0]
+    ├─ Expected        : PAT-TEST-1773851416-V1
+    └─ Actual          : PAT-TEST-1773851416-V1
+  ✓ PASS
+
+  ▶ 2.2 Assign doctor
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 17 — AssignDoctor — assigns doctor to V1
+    Caller Identity
+    ├─ Username    : receptionist
+    ├─ Role        : receptionist
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:7051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m1D08D3222389BDD2B5A8...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 49
+    ├─ Block After  : 50
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 18 — GetVisit — status is WITH_DOCTOR
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 50
+    ├─ Field Queried   : .status
+    ├─ Expected        : WITH_DOCTOR
+    └─ Actual          : WITH_DOCTOR
+  ✓ PASS
+
+  ▣ TEST 19 — GetVisit — assignedDoctor is doctor
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 50
+    ├─ Field Queried   : .assignedDoctor
+    ├─ Expected        : doctor
+    └─ Actual          : doctor
+  ✓ PASS
+
+  ▣ TEST 20 — GetVisit — forwardingLog has 2 entries
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 50
+    ├─ jq Expression   : .forwardingLog | length
+    ├─ Expected        : 2
+    └─ Actual          : 2
+  ✓ PASS
+
+  ▣ TEST 21 — GetVisit — log[1].action is DOCTOR_ASSIGNED
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 50
+    ├─ jq Expression   : .forwardingLog[1].action
+    ├─ Expected        : DOCTOR_ASSIGNED
+    └─ Actual          : DOCTOR_ASSIGNED
+  ✓ PASS
+
+  ▶ 2.3 Assign nurse
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 22 — AssignNurse — assigns nurse
+    Caller Identity
+    ├─ Username    : receptionist
+    ├─ Role        : receptionist
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:7051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m1D08D3222389BDD2B5A8...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 50
+    ├─ Block After  : 51
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 23 — GetVisit — assignedNurse is nurse
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 51
+    ├─ Field Queried   : .assignedNurse
+    ├─ Expected        : nurse
+    └─ Actual          : nurse
+  ✓ PASS
+
+  ▶ 2.4 Reassign doctor
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 24 — AssignDoctor — reassign doctor mid-visit
+    Caller Identity
+    ├─ Username    : receptionist
+    ├─ Role        : receptionist
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:7051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m1D08D3222389BDD2B5A8...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 51
+    ├─ Block After  : 52
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▶ 2.5 Second visit auto-increment
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 25 — OpenVisit — V2 auto-generated for same patient
+    Caller Identity
+    ├─ Username    : receptionist
+    ├─ Role        : receptionist
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:7051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m1D08D3222389BDD2B5A8...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 52
+    ├─ Block After  : 53
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 26 — GetPatient — visitCount is 2
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 53
+    ├─ jq Expression   : .visitCount
+    ├─ Expected        : 2
+    └─ Actual          : 2
+  ✓ PASS
+
+  ▣ TEST 27 — GetPatient — visitIds has 2 entries
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 53
+    ├─ jq Expression   : .visitIds | length
+    ├─ Expected        : 2
+    └─ Actual          : 2
+  ✓ PASS
+
+  ▶ 2.6 Non-existent patient blocked
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 28 — OpenVisit — blocked for GHOST-999
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : receptionist
+    ├─ Role        : receptionist
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:7051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m1D08D3222389BDD2B5A8...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 53 (unchanged — rejected before commit)
+    ├─ Expected Err : not found
+    └─ Actual Error : Patient not found: GHOST-999
+
+  ✓ PASS — Correctly rejected with expected error
+
+╔══════════════════════════════════════════════════════╗
+║  3. CLINICAL CONTRACT
+╚══════════════════════════════════════════════════════╝
+
+  ▶ 3.1 Record vitals
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 29 — RecordVitals — nurse records vitals on peer2.hospital
+    Caller Identity
+    ├─ Username    : nurse
+    ├─ Role        : nurse
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:10051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m6C13443842626C9D8734...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 53
+    ├─ Block After  : 54
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 30 — vitals.bloodPressure is 140/90
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 54
+    ├─ jq Expression   : .vitals.bloodPressure
+    ├─ Expected        : 140/90
+    └─ Actual          : 140/90
+  ✓ PASS
+
+  ▣ TEST 31 — vitals.temperature is 99.2F
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 54
+    ├─ jq Expression   : .vitals.temperature
+    ├─ Expected        : 99.2F
+    └─ Actual          : 99.2F
+  ✓ PASS
+
+  ▣ TEST 32 — vitals.recordedBy is nurse
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 54
+    ├─ jq Expression   : .vitals.recordedBy
+    ├─ Expected        : nurse
+    └─ Actual          : nurse
+  ✓ PASS
+
+  ▶ 3.2 Care notes (multiple)
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 33 — AddCareNote — first note
+    Caller Identity
+    ├─ Username    : nurse
+    ├─ Role        : nurse
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:10051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m6C13443842626C9D8734...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 54
+    ├─ Block After  : 55
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 34 — AddCareNote — second note (append)
+    Caller Identity
+    ├─ Username    : nurse
+    ├─ Role        : nurse
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:10051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m6C13443842626C9D8734...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 55
+    ├─ Block After  : 56
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 35 — careNotes has 2 entries
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 56
+    ├─ jq Expression   : .careNotes | length
+    ├─ Expected        : 2
+    └─ Actual          : 2
+  ✓ PASS
+
+  ▣ TEST 36 — careNotes[0].note matches
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 56
+    ├─ jq Expression   : .careNotes[0].note
+    ├─ Expected        : Patient is alert and cooperative. Given paracetamol for fever.
+    └─ Actual          : Patient is alert and cooperative. Given paracetamol for fever.
+  ✓ PASS
+
+  ▶ 3.3 Diagnosis notes (multiple revisions)
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 37 — UpdateDiagnosisNotes — initial diagnosis on peer1.hospital
+    Caller Identity
+    ├─ Username    : doctor
+    ├─ Role        : doctor
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:9051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m098AC40B103657284BB7...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 56
+    ├─ Block After  : 57
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 38 — diagnosisNotes updated
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 57
+    ├─ Field Queried   : .diagnosisNotes
+    ├─ Expected        : Suspected viral fever. Awaiting lab confirmation.
+    └─ Actual          : Suspected viral fever. Awaiting lab confirmation.
+  ✓ PASS
+
+  ▣ TEST 39 — UpdateDiagnosisNotes — revised after more info
+    Caller Identity
+    ├─ Username    : doctor
+    ├─ Role        : doctor
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:9051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m098AC40B103657284BB7...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 57
+    ├─ Block After  : 58
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 40 — diagnosisNotes reflects latest revision
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 58
+    ├─ Field Queried   : .diagnosisNotes
+    ├─ Expected        : Confirmed dengue fever based on symptoms and lab results.
+    └─ Actual          : Confirmed dengue fever based on symptoms and lab results.
+  ✓ PASS
+
+  ▶ 3.4 Prescription versioning
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 41 — UpdatePrescription — v1
+    Caller Identity
+    ├─ Username    : doctor
+    ├─ Role        : doctor
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:9051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m098AC40B103657284BB7...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 58
+    ├─ Block After  : 59
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 42 — prescriptions has 1 entry
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 59
+    ├─ jq Expression   : .prescriptions | length
+    ├─ Expected        : 1
+    └─ Actual          : 1
+  ✓ PASS
+
+  ▣ TEST 43 — prescriptions[0].version is 1
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 59
+    ├─ jq Expression   : .prescriptions[0].version
+    ├─ Expected        : 1
+    └─ Actual          : 1
+  ✓ PASS
+
+  ▣ TEST 44 — UpdatePrescription — v2 adds Doxycycline
+    Caller Identity
+    ├─ Username    : doctor
+    ├─ Role        : doctor
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:9051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m098AC40B103657284BB7...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 59
+    ├─ Block After  : 60
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 45 — prescriptions has 2 versions
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 60
+    ├─ jq Expression   : .prescriptions | length
+    ├─ Expected        : 2
+    └─ Actual          : 2
+  ✓ PASS
+
+  ▣ TEST 46 — v2 has 3 medications
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 60
+    ├─ jq Expression   : .prescriptions[1].medications | length
+    ├─ Expected        : 3
+    └─ Actual          : 3
+  ✓ PASS
+
+  ▶ 3.5 Access control
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 47 — UpdateDiagnosisNotes — receptionist blocked
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : receptionist
+    ├─ Role        : receptionist
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:7051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m1D08D3222389BDD2B5A8...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 60 (unchanged — rejected before commit)
+    ├─ Expected Err : Access denied
+    └─ Actual Error : Access denied: role 'receptionist' (user: receptionist) is not permitted. Required: doctor
+
+  ✓ PASS — Correctly rejected with expected error
+
+  ▣ TEST 48 — RecordVitals — doctor blocked
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : doctor
+    ├─ Role        : doctor
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:9051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m098AC40B103657284BB7...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 60 (unchanged — rejected before commit)
+    ├─ Expected Err : Access denied
+    └─ Actual Error : Access denied: role 'doctor' (user: doctor) is not permitted. Required: nurse
+
+  ✓ PASS — Correctly rejected with expected error
+
+  ▣ TEST 49 — UpdatePrescription — nurse blocked
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : nurse
+    ├─ Role        : nurse
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:10051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m6C13443842626C9D8734...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 60 (unchanged — rejected before commit)
+    ├─ Expected Err : Access denied
+    └─ Actual Error : Access denied: role 'nurse' (user: nurse) is not permitted. Required: doctor
+
+  ✓ PASS — Correctly rejected with expected error
+
+╔══════════════════════════════════════════════════════╗
+║  4. FORWARD CONTRACT
+╚══════════════════════════════════════════════════════╝
+
+  ▶ 4.1 Doctor → Nurse
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 50 — ForwardToNurse — with care instructions
+    Caller Identity
+    ├─ Username    : doctor
+    ├─ Role        : doctor
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:9051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m098AC40B103657284BB7...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 60
+    ├─ Block After  : 61
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 51 — status is WITH_NURSE
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 61
+    ├─ Field Queried   : .status
+    ├─ Expected        : WITH_NURSE
+    └─ Actual          : WITH_NURSE
+  ✓ PASS
+
+  ▣ TEST 52 — FORWARD_TO_NURSE in log
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 61
+    ├─ jq Expression   : .forwardingLog | map(select(.action == "FORWARD_TO_NURSE")) | length
+    ├─ Expected        : 1
+    └─ Actual          : 1
+  ✓ PASS
+
+  ▣ TEST 53 — instructions stored in log
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 61
+    ├─ jq Expression   : .forwardingLog | map(select(.action == "FORWARD_TO_NURSE")) | .[0].instructions
+    ├─ Expected        : Monitor temperature every 2 hours. Record fluid intake.
+    └─ Actual          : Monitor temperature every 2 hours. Record fluid intake.
+  ✓ PASS
+
+  ▶ 4.2 Nurse → Doctor
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 54 — AddCareNote — observation before forwarding
+    Caller Identity
+    ├─ Username    : nurse
+    ├─ Role        : nurse
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:10051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m6C13443842626C9D8734...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 61
+    ├─ Block After  : 62
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 55 — ForwardToDoctor — nurse returns with observations
+    Caller Identity
+    ├─ Username    : nurse
+    ├─ Role        : nurse
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:10051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m6C13443842626C9D8734...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 62
+    ├─ Block After  : 63
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 56 — status returns to WITH_DOCTOR
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 63
+    ├─ Field Queried   : .status
+    ├─ Expected        : WITH_DOCTOR
+    └─ Actual          : WITH_DOCTOR
+  ✓ PASS
+
+  ▣ TEST 57 — FORWARD_TO_DOCTOR in log
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 63
+    ├─ jq Expression   : .forwardingLog | map(select(.action == "FORWARD_TO_DOCTOR")) | length
+    ├─ Expected        : 1
+    └─ Actual          : 1
+  ✓ PASS
+
+  ▶ 4.3 First lab request
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 58 — ForwardToLab — NS1, CBC, Platelet (L1)
+    Caller Identity
+    ├─ Username    : doctor
+    ├─ Role        : doctor
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:9051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m098AC40B103657284BB7...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 63
+    ├─ Block After  : 64
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 59 — status is WITH_LAB
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 64
+    ├─ Field Queried   : .status
+    ├─ Expected        : WITH_LAB
+    └─ Actual          : WITH_LAB
+  ✓ PASS
+
+  ▣ TEST 60 — labRequests has 1 entry
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 64
+    ├─ jq Expression   : .labRequests | length
+    ├─ Expected        : 1
+    └─ Actual          : 1
+  ✓ PASS
+
+  ▣ TEST 61 — labRequestId is PAT-TEST-1773851416-V1-L1
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 64
+    ├─ jq Expression   : .labRequests[0].labRequestId
+    ├─ Expected        : PAT-TEST-1773851416-V1-L1
+    └─ Actual          : PAT-TEST-1773851416-V1-L1
+  ✓ PASS
+
+  ▣ TEST 62 — L1 status is REQUESTED
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 64
+    ├─ jq Expression   : .labRequests[0].status
+    ├─ Expected        : REQUESTED
+    └─ Actual          : REQUESTED
+  ✓ PASS
+
+  ▣ TEST 63 — L1 has 3 tests
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 64
+    ├─ jq Expression   : .labRequests[0].tests | length
+    ├─ Expected        : 3
+    └─ Actual          : 3
+  ✓ PASS
+
+  ▶ 4.4 Second lab request
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 64 — ForwardToLab — LFT only (L2)
+    Caller Identity
+    ├─ Username    : doctor
+    ├─ Role        : doctor
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:9051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m098AC40B103657284BB7...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 64
+    ├─ Block After  : 65
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 65 — labRequests has 2 entries
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 65
+    ├─ jq Expression   : .labRequests | length
+    ├─ Expected        : 2
+    └─ Actual          : 2
+  ✓ PASS
+
+  ▣ TEST 66 — L2 labRequestId is PAT-TEST-1773851416-V1-L2
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 65
+    ├─ jq Expression   : .labRequests[1].labRequestId
+    ├─ Expected        : PAT-TEST-1773851416-V1-L2
+    └─ Actual          : PAT-TEST-1773851416-V1-L2
+  ✓ PASS
+
+  ▶ 4.5 Forward access control
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 67 — ForwardToLab — nurse blocked
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : nurse
+    ├─ Role        : nurse
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:10051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m6C13443842626C9D8734...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 65 (unchanged — rejected before commit)
+    ├─ Expected Err : Access denied
+    └─ Actual Error : Access denied: role 'nurse' (user: nurse) is not permitted. Required: doctor
+
+  ✓ PASS — Correctly rejected with expected error
+
+  ▣ TEST 68 — ForwardToNurse — receptionist blocked
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : receptionist
+    ├─ Role        : receptionist
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:7051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m1D08D3222389BDD2B5A8...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 65 (unchanged — rejected before commit)
+    ├─ Expected Err : Access denied
+    └─ Actual Error : Access denied: role 'receptionist' (user: receptionist) is not permitted. Required: doctor
+
+  ✓ PASS — Correctly rejected with expected error
+
+╔══════════════════════════════════════════════════════╗
+║  5. LAB CONTRACT
+╚══════════════════════════════════════════════════════╝
+
+  ▶ 5.1 Acknowledge L1
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 69 — AcknowledgeLabRequest — labreceptionist acks L1 on peer0.diagnostic
+    Caller Identity
+    ├─ Username    : labreceptionist
+    ├─ Role        : labreceptionist
+    ├─ MSP ID      : DiagnosticsMSP
+    └─ Peer        : localhost:8051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m27265AAD2B2156AD7C6A...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 65
+    ├─ Block After  : 66
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 70 — L1 status is ACKNOWLEDGED
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 66
+    ├─ jq Expression   : .labRequests[0].status
+    ├─ Expected        : ACKNOWLEDGED
+    └─ Actual          : ACKNOWLEDGED
+  ✓ PASS
+
+  ▣ TEST 71 — acknowledgedBy is labreceptionist
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 66
+    ├─ jq Expression   : .labRequests[0].acknowledgedBy
+    ├─ Expected        : labreceptionist
+    └─ Actual          : labreceptionist
+  ✓ PASS
+
+  ▶ 5.2 Double-ack blocked
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 72 — AcknowledgeLabRequest — L1 cannot be acked twice
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : labreceptionist
+    ├─ Role        : labreceptionist
+    ├─ MSP ID      : DiagnosticsMSP
+    └─ Peer        : localhost:8051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m27265AAD2B2156AD7C6A...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 66 (unchanged — rejected before commit)
+    ├─ Expected Err : already in status
+    └─ Actual Error : Lab request PAT-TEST-1773851416-V1-L1 is already in status 'ACKNOWLEDGED'
+
+  ✓ PASS — Correctly rejected with expected error
+
+  ▶ 5.3 Submit results
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 73 — SubmitLabResult — labtechnician submits L1 results with hash
+    Caller Identity
+    ├─ Username    : labtechnician
+    ├─ Role        : labtechnician
+    ├─ MSP ID      : DiagnosticsMSP
+    └─ Peer        : localhost:8051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m21D379CE1ED3E541B498...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 66
+    ├─ Block After  : 67
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 74 — L1 status is COMPLETED
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 67
+    ├─ jq Expression   : .labRequests[0].status
+    ├─ Expected        : COMPLETED
+    └─ Actual          : COMPLETED
+  ✓ PASS
+
+  ▣ TEST 75 — NS1 Antigen result is Positive
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 67
+    ├─ jq Expression   : .labRequests[0].results["NS1 Antigen"]
+    ├─ Expected        : Positive
+    └─ Actual          : Positive
+  ✓ PASS
+
+  ▣ TEST 76 — Platelet Count stored
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 67
+    ├─ jq Expression   : .labRequests[0].results["Platelet Count"]
+    ├─ Expected        : 85000 (Low)
+    └─ Actual          : 85000 (Low)
+  ✓ PASS
+
+  ▣ TEST 77 — resultsHash stored for integrity
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 67
+    ├─ jq Expression   : .labRequests[0].resultsHash
+    ├─ Expected        : sha256:dengue-lab-hash-001
+    └─ Actual          : sha256:dengue-lab-hash-001
+  ✓ PASS
+
+  ▶ 5.4 Ack L2
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 78 — AcknowledgeLabRequest — ack L2
+    Caller Identity
+    ├─ Username    : labreceptionist
+    ├─ Role        : labreceptionist
+    ├─ MSP ID      : DiagnosticsMSP
+    └─ Peer        : localhost:8051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m27265AAD2B2156AD7C6A...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 67
+    ├─ Block After  : 68
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▶ 5.5 Approve (supervisor)
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 79 — ApproveLabResult — labsupervisor approves L1
+    Caller Identity
+    ├─ Username    : labsupervisor
+    ├─ Role        : labsupervisor
+    ├─ MSP ID      : DiagnosticsMSP
+    └─ Peer        : localhost:8051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m55C0210A7AA2C357CB83...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 68
+    ├─ Block After  : 69
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 80 — L1 status is APPROVED
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 69
+    ├─ jq Expression   : .labRequests[0].status
+    ├─ Expected        : APPROVED
+    └─ Actual          : APPROVED
+  ✓ PASS
+
+  ▣ TEST 81 — approvedBy is labsupervisor
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 69
+    ├─ jq Expression   : .labRequests[0].approvedBy
+    ├─ Expected        : labsupervisor
+    └─ Actual          : labsupervisor
+  ✓ PASS
+
+  ▣ TEST 82 — status returned to WITH_DOCTOR
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 69
+    ├─ Field Queried   : .status
+    ├─ Expected        : WITH_DOCTOR
+    └─ Actual          : WITH_DOCTOR
+  ✓ PASS
+
+  ▶ 5.6 Lab access control
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 83 — AcknowledgeLabRequest — doctor blocked
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : doctor
+    ├─ Role        : doctor
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:9051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m098AC40B103657284BB7...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 69 (unchanged — rejected before commit)
+    ├─ Expected Err : Access denied
+    └─ Actual Error : Access denied: role 'doctor' (user: doctor) is not permitted. Required: labreceptionist or labadmin
+
+  ✓ PASS — Correctly rejected with expected error
+
+  ▣ TEST 84 — SubmitLabResult — labreceptionist blocked
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : labreceptionist
+    ├─ Role        : labreceptionist
+    ├─ MSP ID      : DiagnosticsMSP
+    └─ Peer        : localhost:8051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m27265AAD2B2156AD7C6A...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 69 (unchanged — rejected before commit)
+    ├─ Expected Err : Access denied
+    └─ Actual Error : Access denied: role 'labreceptionist' (user: labreceptionist) is not permitted. Required: labtechnician or radiologist or labadmin
+
+  ✓ PASS — Correctly rejected with expected error
+
+  ▣ TEST 85 — ApproveLabResult — labtechnician blocked
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : labtechnician
+    ├─ Role        : labtechnician
+    ├─ MSP ID      : DiagnosticsMSP
+    └─ Peer        : localhost:8051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m21D379CE1ED3E541B498...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 69 (unchanged — rejected before commit)
+    ├─ Expected Err : Access denied
+    └─ Actual Error : Access denied: role 'labtechnician' (user: labtechnician) is not permitted. Required: labsupervisor or labadmin
+
+  ✓ PASS — Correctly rejected with expected error
+
+╔══════════════════════════════════════════════════════╗
+║  6. VISIT FINALIZATION
+╚══════════════════════════════════════════════════════╝
+
+  ▶ 6.1 Final prescription
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 86 — UpdatePrescription — final v3
+    Caller Identity
+    ├─ Username    : doctor
+    ├─ Role        : doctor
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:9051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m098AC40B103657284BB7...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 69
+    ├─ Block After  : 70
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▶ 6.2 Blocked without diagnosis
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 87 — FinalizeVisit — empty diagnosis rejected
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : doctor
+    ├─ Role        : doctor
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:9051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m098AC40B103657284BB7...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 70 (unchanged — rejected before commit)
+    ├─ Expected Err : required
+    └─ Actual Error : Final diagnosis is required to finalize visit
+
+  ✓ PASS — Correctly rejected with expected error
+
+  ▶ 6.3 Finalize
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 88 — FinalizeVisit — doctor finalizes with confirmed diagnosis
+    Caller Identity
+    ├─ Username    : doctor
+    ├─ Role        : doctor
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:9051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m098AC40B103657284BB7...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 70
+    ├─ Block After  : 71
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 89 — status is VISIT_FINALIZED
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 71
+    ├─ Field Queried   : .status
+    ├─ Expected        : VISIT_FINALIZED
+    └─ Actual          : VISIT_FINALIZED
+  ✓ PASS
+
+  ▣ TEST 90 — finalDiagnosis stored
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 71
+    ├─ Field Queried   : .finalDiagnosis
+    ├─ Expected        : Dengue Fever (NS1 Antigen Positive) with thrombocytopenia
+    └─ Actual          : Dengue Fever (NS1 Antigen Positive) with thrombocytopenia
+  ✓ PASS
+
+  ▣ TEST 91 — finalizedBy is doctor
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 71
+    ├─ Field Queried   : .finalizedBy
+    ├─ Expected        : doctor
+    └─ Actual          : doctor
+  ✓ PASS
+
+  ▶ 6.4 Clinical blocked after finalization
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 92 — UpdateDiagnosisNotes — blocked after VISIT_FINALIZED
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : doctor
+    ├─ Role        : doctor
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:9051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m098AC40B103657284BB7...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 71 (unchanged — rejected before commit)
+    ├─ Expected Err : status
+    └─ Actual Error : Cannot update diagnosis in status 'VISIT_FINALIZED'
+
+  ✓ PASS — Correctly rejected with expected error
+
+  ▣ TEST 93 — AddCareNote — blocked after VISIT_FINALIZED
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : nurse
+    ├─ Role        : nurse
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:10051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m6C13443842626C9D8734...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 71 (unchanged — rejected before commit)
+    ├─ Expected Err : status
+    └─ Actual Error : Cannot add care note in status 'VISIT_FINALIZED'
+
+  ✓ PASS — Correctly rejected with expected error
+
+╔══════════════════════════════════════════════════════╗
+║  7. DISCHARGE CONTRACT
+╚══════════════════════════════════════════════════════╝
+
+  ▶ 7.1 Dispense medication
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 94 — DispenseMedication — pharmacist dispenses on peer2.hospital
+    Caller Identity
+    ├─ Username    : pharmacist
+    ├─ Role        : pharmacist
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:10051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m665BCBB305B248C06FF9...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 71
+    ├─ Block After  : 72
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 95 — medicationDispensedBy is pharmacist
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 72
+    ├─ Field Queried   : .medicationDispensedBy
+    ├─ Expected        : pharmacist
+    └─ Actual          : pharmacist
+  ✓ PASS
+
+  ▶ 7.2 Dispense blocked on V2
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 96 — DispenseMedication — blocked (V2 not finalized)
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : pharmacist
+    ├─ Role        : pharmacist
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:10051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m665BCBB305B248C06FF9...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 72 (unchanged — rejected before commit)
+    ├─ Expected Err : VISIT_FINALIZED
+    └─ Actual Error : Visit must be VISIT_FINALIZED for medication dispensing. Current: 'OPEN'
+
+  ✓ PASS — Correctly rejected with expected error
+
+  ▶ 7.3 Finalize record
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 97 — FinalizeRecord — MRO finalizes official record on peer1.hospital
+    Caller Identity
+    ├─ Username    : medrecordofficer
+    ├─ Role        : medrecordofficer
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:9051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m05436942AA50FA36DF15...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 72
+    ├─ Block After  : 73
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 98 — status is RECORD_FINALIZED
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 73
+    ├─ Field Queried   : .status
+    ├─ Expected        : RECORD_FINALIZED
+    └─ Actual          : RECORD_FINALIZED
+  ✓ PASS
+
+  ▣ TEST 99 — recordFinalizedBy is medrecordofficer
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 73
+    ├─ Field Queried   : .recordFinalizedBy
+    ├─ Expected        : medrecordofficer
+    └─ Actual          : medrecordofficer
+  ✓ PASS
+
+  ▶ 7.4 Access control
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 100 — FinalizeRecord — doctor blocked
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : doctor
+    ├─ Role        : doctor
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:9051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m098AC40B103657284BB7...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 73 (unchanged — rejected before commit)
+    ├─ Expected Err : Access denied
+    └─ Actual Error : Access denied: role 'doctor' (user: doctor) is not permitted. Required: medrecordofficer
+
+  ✓ PASS — Correctly rejected with expected error
+
+  ▣ TEST 101 — DispenseMedication — nurse blocked
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : nurse
+    ├─ Role        : nurse
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:10051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m6C13443842626C9D8734...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 73 (unchanged — rejected before commit)
+    ├─ Expected Err : Access denied
+    └─ Actual Error : Access denied: role 'nurse' (user: nurse) is not permitted. Required: pharmacist
+
+  ✓ PASS — Correctly rejected with expected error
+
+╔══════════════════════════════════════════════════════╗
+║  8. CLAIMS CONTRACT
+╚══════════════════════════════════════════════════════╝
+
+  ▶ 8.1 Submit claim
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 102 — SubmitClaim — billingofficer submits on peer0.provider
+    Caller Identity
+    ├─ Username    : billingofficer
+    ├─ Role        : billingofficer
+    ├─ MSP ID      : ProviderMSP
+    └─ Peer        : localhost:11051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37mA7281EB0DBE0CC4F6CDF...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 73
+    ├─ Block After  : 74
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 103 — status is CLAIM_SUBMITTED
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 74
+    ├─ Field Queried   : .status
+    ├─ Expected        : CLAIM_SUBMITTED
+    └─ Actual          : CLAIM_SUBMITTED
+  ✓ PASS
+
+  ▣ TEST 104 — claimId stored
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 74
+    ├─ Field Queried   : .claimId
+    ├─ Expected        : CLM-1773851511
+    └─ Actual          : CLM-1773851511
+  ✓ PASS
+
+  ▣ TEST 105 — claimAmount is 28500
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Current Block   : 74
+    ├─ jq Expression   : .claimAmount
+    ├─ Expected        : 28500
+    └─ Actual          : 28500
+  ✓ PASS
+
+  ▣ TEST 106 — claimSubmittedBy is billingofficer
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 74
+    ├─ Field Queried   : .claimSubmittedBy
+    ├─ Expected        : billingofficer
+    └─ Actual          : billingofficer
+  ✓ PASS
+
+  ▶ 8.2 Submit blocked before RECORD_FINALIZED
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 107 — SubmitClaim — V2 not finalized
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : billingofficer
+    ├─ Role        : billingofficer
+    ├─ MSP ID      : ProviderMSP
+    └─ Peer        : localhost:11051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37mA7281EB0DBE0CC4F6CDF...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 74 (unchanged — rejected before commit)
+    ├─ Expected Err : RECORD_FINALIZED
+    └─ Actual Error : Visit must be RECORD_FINALIZED to submit a claim. Current: 'OPEN'
+
+  ✓ PASS — Correctly rejected with expected error
+
+  ▶ 8.3 Audit claim
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 108 — AuditClaim — claimsauditor audits on peer0.provider
+    Caller Identity
+    ├─ Username    : claimsauditor
+    ├─ Role        : claimsauditor
+    ├─ MSP ID      : ProviderMSP
+    └─ Peer        : localhost:11051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m2B83B42E664A6A712679...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 74
+    ├─ Block After  : 75
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 109 — status is CLAIM_UNDER_AUDIT
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 75
+    ├─ Field Queried   : .status
+    ├─ Expected        : CLAIM_UNDER_AUDIT
+    └─ Actual          : CLAIM_UNDER_AUDIT
+  ✓ PASS
+
+  ▣ TEST 110 — auditedBy is claimsauditor
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 75
+    ├─ Field Queried   : .auditedBy
+    ├─ Expected        : claimsauditor
+    └─ Actual          : claimsauditor
+  ✓ PASS
+
+  ▶ 8.4 Approve claim
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 111 — ProcessClaim — insuranceofficer approves
+    Caller Identity
+    ├─ Username    : insuranceofficer
+    ├─ Role        : insuranceofficer
+    ├─ MSP ID      : ProviderMSP
+    └─ Peer        : localhost:11051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m2CD93594268CF424E1AC...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 75
+    ├─ Block After  : 76
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 112 — status is CLAIM_APPROVED
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 76
+    ├─ Field Queried   : .status
+    ├─ Expected        : CLAIM_APPROVED
+    └─ Actual          : CLAIM_APPROVED
+  ✓ PASS
+
+  ▣ TEST 113 — claimStatus is APPROVED
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 76
+    ├─ Field Queried   : .claimStatus
+    ├─ Expected        : APPROVED
+    └─ Actual          : APPROVED
+  ✓ PASS
+
+  ▣ TEST 114 — processedBy is insuranceofficer
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 76
+    ├─ Field Queried   : .processedBy
+    ├─ Expected        : insuranceofficer
+    └─ Actual          : insuranceofficer
+  ✓ PASS
+
+  ▶ 8.5 Claims access control
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 115 — AuditClaim — billingofficer blocked
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : billingofficer
+    ├─ Role        : billingofficer
+    ├─ MSP ID      : ProviderMSP
+    └─ Peer        : localhost:11051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37mA7281EB0DBE0CC4F6CDF...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 76 (unchanged — rejected before commit)
+    ├─ Expected Err : Access denied
+    └─ Actual Error : Access denied: role 'billingofficer' (user: billingofficer) is not permitted. Required: claimsauditor
+
+  ✓ PASS — Correctly rejected with expected error
+
+  ▣ TEST 116 — ProcessClaim — claimsauditor blocked
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : claimsauditor
+    ├─ Role        : claimsauditor
+    ├─ MSP ID      : ProviderMSP
+    └─ Peer        : localhost:11051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m2B83B42E664A6A712679...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 76 (unchanged — rejected before commit)
+    ├─ Expected Err : Access denied
+    └─ Actual Error : Access denied: role 'claimsauditor' (user: claimsauditor) is not permitted. Required: insuranceofficer
+
+  ✓ PASS — Correctly rejected with expected error
+
+╔══════════════════════════════════════════════════════╗
+║  9. DISCHARGE PATIENT
+╚══════════════════════════════════════════════════════╝
+
+  ▶ 9.1 Discharge after approval
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 117 — DischargePatient — hospitaladmin discharges on peer0.hospital
+    Caller Identity
+    ├─ Username    : hospitaladmin
+    ├─ Role        : admin
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:7051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m133013ACC3F5AB0E7B33...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 76
+    ├─ Block After  : 77
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 118 — status is DISCHARGED
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 77
+    ├─ Field Queried   : .status
+    ├─ Expected        : DISCHARGED
+    └─ Actual          : DISCHARGED
+  ✓ PASS
+
+  ▣ TEST 119 — dischargedBy is hospitaladmin
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 77
+    ├─ Field Queried   : .dischargedBy
+    ├─ Expected        : hospitaladmin
+    └─ Actual          : hospitaladmin
+  ✓ PASS
+
+  ▶ 9.2 Blocked after discharge
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 120 — AssignDoctor — cannot modify discharged visit
+  [Expecting rejection — should NOT succeed]
+    Caller Identity
+    ├─ Username    : receptionist
+    ├─ Role        : receptionist
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:7051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m1D08D3222389BDD2B5A8...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Rejection Details
+    ├─ Block Height : 77 (unchanged — rejected before commit)
+    ├─ Expected Err : discharged
+    └─ Actual Error : Cannot modify a discharged visit
+
+  ✓ PASS — Correctly rejected with expected error
+
+╔══════════════════════════════════════════════════════╗
+║  10. REJECTED CLAIM FLOW
+╚══════════════════════════════════════════════════════╝
+
+  ▶ 10.1 Setup (silent)
+  ────────────────────────────────────────────────────
+  Running 10 setup transactions...
+  Setup done — 10 transactions committed
+
+  ▶ 10.2 Reject claim
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 121 — ProcessClaim — REJECTED with reason
+    Caller Identity
+    ├─ Username    : insuranceofficer
+    ├─ Role        : insuranceofficer
+    ├─ MSP ID      : ProviderMSP
+    └─ Peer        : localhost:11051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m2CD93594268CF424E1AC...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 87
+    ├─ Block After  : 88
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 122 — status is CLAIM_REJECTED
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 88
+    ├─ Field Queried   : .status
+    ├─ Expected        : CLAIM_REJECTED
+    └─ Actual          : CLAIM_REJECTED
+  ✓ PASS
+
+  ▣ TEST 123 — claimStatus is REJECTED
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 88
+    ├─ Field Queried   : .claimStatus
+    ├─ Expected        : REJECTED
+    └─ Actual          : REJECTED
+  ✓ PASS
+
+  ▣ TEST 124 — claimReason stored
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 88
+    ├─ Field Queried   : .claimReason
+    ├─ Expected        : Pre-existing condition not covered
+    └─ Actual          : Pre-existing condition not covered
+  ✓ PASS
+
+  ▶ 10.3 Discharge after rejection
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 125 — DischargePatient — allowed after rejection
+    Caller Identity
+    ├─ Username    : hospitaladmin
+    ├─ Role        : admin
+    ├─ MSP ID      : HospitalMSP
+    └─ Peer        : localhost:7051
+    \033[2m├─ Cert CN        : \033[1;37m\033[0m
+    \033[2m├─ Cert OU        : \033[1;37m\033[0m
+    \033[2m├─ Issuing CA     : \033[1;37m\033[0m
+    \033[2m├─ Serial Number  : \033[1;37m133013ACC3F5AB0E7B33...\033[0m
+    \033[2m├─ Sig Algorithm  : \033[1;37mecdsa-with-SHA256\033[0m
+    \033[2m└─ Cert Expiry    : \033[1;37mMar 18 16:08:00 2027 GMT\033[0m
+
+    Transaction Result
+    ├─ Status       : SUCCESS — Chaincode invoke successful
+    ├─ Transaction  : (see peer logs)
+    ├─ Block Before : 88
+    ├─ Block After  : 89
+    ├─ New Blocks   : +1
+    ├─ Channel      : ehrchannel
+    ├─ Chaincode    : ehr
+    └─ Orderer      : localhost:7050
+
+  ✓ PASS
+
+  ▣ TEST 126 — status is DISCHARGED
+  [evaluateTransaction — read-only, no block written]
+    Query Details
+    ├─ Evaluating Peer : peer0.hospital.example.com:7051
+    ├─ Signer          : HospitalMSP / hospitaladmin
+    ├─ Current Block   : 89
+    ├─ Field Queried   : .status
+    ├─ Expected        : DISCHARGED
+    └─ Actual          : DISCHARGED
+  ✓ PASS
+
+╔══════════════════════════════════════════════════════╗
+║  11. HISTORY & AUDIT TRAIL
+╚══════════════════════════════════════════════════════╝
+
+  ▶ 11.1 Visit blockchain history
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 127 — GetVisitHistory — full blockchain audit trail
+
+    Blockchain Audit Trail
+    ├─ Visit ID         : PAT-TEST-1773851416-V1
+    ├─ Total TX         : 28
+    ├─ Start Block      : 47
+    ├─ Current Block    : 89
+    └─ Blocks Written   : 42
+
+    Transaction Timeline (visit PAT-TEST-1773851416-V1)
+    [2026-03-18T16:32:03.000Z] tx:e836e75115f3ae08... | status:DISCHARGED
+    [2026-03-18T16:31:59.000Z] tx:02cc44f3a6563ed4... | status:CLAIM_APPROVED
+    [2026-03-18T16:31:55.000Z] tx:e294bfb6438caf75... | status:CLAIM_UNDER_AUDIT
+    [2026-03-18T16:31:51.000Z] tx:0f6249ea13a857b3... | status:CLAIM_SUBMITTED
+    [2026-03-18T16:31:48.000Z] tx:82247842fecee39a... | status:RECORD_FINALIZED
+    [2026-03-18T16:31:44.000Z] tx:2128063c259224ad... | status:VISIT_FINALIZED
+    [2026-03-18T16:31:40.000Z] tx:7dec9b76c3190fa8... | status:VISIT_FINALIZED
+    [2026-03-18T16:31:37.000Z] tx:ed246d1edabced42... | status:WITH_DOCTOR
+    [2026-03-18T16:31:32.000Z] tx:7c57fe1af335d35e... | status:WITH_DOCTOR
+    [2026-03-18T16:31:29.000Z] tx:9599b0693787b478... | status:WITH_LAB
+    [2026-03-18T16:31:26.000Z] tx:6f495efcec371858... | status:WITH_LAB
+    [2026-03-18T16:31:22.000Z] tx:aa171cdc2559d148... | status:WITH_LAB
+    [2026-03-18T16:31:18.000Z] tx:2ec7ca93ad85ce71... | status:WITH_LAB
+    [2026-03-18T16:31:14.000Z] tx:07fa183c31497f7a... | status:WITH_LAB
+    [2026-03-18T16:31:11.000Z] tx:028655b3c51e683d... | status:WITH_DOCTOR
+    [2026-03-18T16:31:07.000Z] tx:be3b9956c39d2aa8... | status:WITH_NURSE
+    [2026-03-18T16:31:04.000Z] tx:de9b86a9fee5b4f2... | status:WITH_NURSE
+    [2026-03-18T16:31:00.000Z] tx:e1d4d3748d553ef4... | status:WITH_DOCTOR
+    [2026-03-18T16:30:56.000Z] tx:80ea96e217d8deb1... | status:WITH_DOCTOR
+    [2026-03-18T16:30:53.000Z] tx:21bf6c922849024c... | status:WITH_DOCTOR
+    [2026-03-18T16:30:50.000Z] tx:4965a558869769b4... | status:WITH_DOCTOR
+    [2026-03-18T16:30:46.000Z] tx:9c0a3038adab487e... | status:WITH_DOCTOR
+    [2026-03-18T16:30:43.000Z] tx:c54cf4707dc2940d... | status:WITH_DOCTOR
+    [2026-03-18T16:30:39.000Z] tx:1869b40ca586001c... | status:WITH_DOCTOR
+    [2026-03-18T16:30:32.000Z] tx:39b93866235bfdaa... | status:WITH_DOCTOR
+    [2026-03-18T16:30:29.000Z] tx:42d98e7bf6ec862a... | status:WITH_DOCTOR
+    [2026-03-18T16:30:25.000Z] tx:6f8640435e361f4b... | status:WITH_DOCTOR
+    [2026-03-18T16:30:22.000Z] tx:2ac84bfa43e70327... | status:OPEN
+
+  ✓ PASS — 28 blockchain transactions in visit history
+
+  ▶ 11.2 Forwarding log detail
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 128 — ForwardingLog — complete action log
+
+    Forwarding Log (28 entries)
+    [2026-03-18T16:30:22] receptionist →  | VISIT_OPENED | "Severe headache and high fever for 3 days..."
+    [2026-03-18T16:30:25] receptionist → doctor | DOCTOR_ASSIGNED | "..."
+    [2026-03-18T16:30:29] receptionist → nurse | NURSE_ASSIGNED | "..."
+    [2026-03-18T16:30:32] receptionist → doctor | DOCTOR_ASSIGNED | "..."
+    [2026-03-18T16:30:39] nurse →  | VITALS_RECORDED | "BP:140/90 Temp:99.2F Pulse:88bpm..."
+    [2026-03-18T16:30:43] nurse →  | CARE_NOTE_ADDED | "Patient is alert and cooperative. Given paracetamol for..."
+    [2026-03-18T16:30:46] nurse →  | CARE_NOTE_ADDED | "Fever reduced to 98.6F after medication. Patient restin..."
+    [2026-03-18T16:30:50] doctor →  | DIAGNOSIS_NOTES_UPDATED | "Suspected viral fever. Awaiting lab confirmation...."
+    [2026-03-18T16:30:53] doctor →  | DIAGNOSIS_NOTES_UPDATED | "Confirmed dengue fever based on symptoms and lab result..."
+    [2026-03-18T16:30:56] doctor →  | PRESCRIPTION_UPDATED | "v1: Paracetamol 500mg, ORS sachets..."
+    [2026-03-18T16:31:00] doctor →  | PRESCRIPTION_UPDATED | "v2: Paracetamol 500mg, ORS sachets, Doxycycline 100mg..."
+    [2026-03-18T16:31:04] doctor → nurse | FORWARD_TO_NURSE | "Monitor temperature every 2 hours. Record fluid intake...."
+    [2026-03-18T16:31:07] nurse →  | CARE_NOTE_ADDED | "Temp 101F at 2pm. Fluid 1.5L. Improving...."
+    [2026-03-18T16:31:11] nurse → doctor | FORWARD_TO_DOCTOR | "Temperature still elevated. Patient has rash on arms...."
+    [2026-03-18T16:31:14] doctor → lab | FORWARD_TO_LAB | "Tests: NS1 Antigen, CBC, Platelet Count. Fasting sample..."
+    [2026-03-18T16:31:18] doctor → lab | FORWARD_TO_LAB | "Tests: Liver Function Test. Check for liver involvement..."
+    [2026-03-18T16:31:22] labreceptionist →  | LAB_REQUEST_ACKNOWLEDGED | "Acknowledged: NS1 Antigen, CBC, Platelet Count..."
+    [2026-03-18T16:31:26] labtechnician →  | LAB_RESULT_SUBMITTED | "Results submitted for NS1 Antigen, CBC, Platelet Count..."
+    [2026-03-18T16:31:29] labreceptionist →  | LAB_REQUEST_ACKNOWLEDGED | "Acknowledged: Liver Function Test..."
+    [2026-03-18T16:31:32] labsupervisor → doctor | LAB_RESULT_APPROVED | "Approved results for NS1 Antigen, CBC, Platelet Count..."
+    [2026-03-18T16:31:37] doctor →  | PRESCRIPTION_UPDATED | "v3: Paracetamol 500mg q6h, ORS 200ml q4h, Doxycycline 1..."
+    [2026-03-18T16:31:40] doctor →  | VISIT_FINALIZED | "Dengue Fever (NS1 Antigen Positive) with thrombocytopen..."
+    [2026-03-18T16:31:44] pharmacist →  | MEDICATION_DISPENSED | "Paracetamol 500mg x20, Doxycycline 100mg x10, ORS x10..."
+    [2026-03-18T16:31:48] medrecordofficer →  | RECORD_FINALIZED | "Official record finalized. Ready for insurance claim...."
+    [2026-03-18T16:31:51] billingofficer →  | CLAIM_SUBMITTED | "Claim CLM-1773851511 submitted for ₹28500..."
+    [2026-03-18T16:31:55] claimsauditor →  | CLAIM_AUDITED | "All documents verified. Dengue confirmed by lab...."
+    [2026-03-18T16:31:59] insuranceofficer →  | CLAIM_APPROVED | "Dengue covered under policy IN-2024-HOSP..."
+    [2026-03-18T16:32:03] admin →  | PATIENT_DISCHARGED | "Recovered. Discharged stable. Follow-up in 1 week...."
+
+  ✓ PASS — 28 log entries
+
+  ▶ 11.3 Patient master history
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 129 — GetPatientHistory — master record changes
+
+    Patient Master Record History
+    [2026-03-18T16:30:36] tx:8c3f84e76fc2648d... | visitCount:2 | visits:2
+    [2026-03-18T16:30:22] tx:2ac84bfa43e70327... | visitCount:1 | visits:1
+    [2026-03-18T16:30:17] tx:ffaf458b1d5a800b... | visitCount:0 | visits:0
+
+  ✓ PASS — 3 patient master record history entries
+
+  ▶ 11.4 GetPatientVisitsFull
+  ────────────────────────────────────────────────────
+
+  ▣ TEST 130 — GetPatientVisitsFull — all visits
+
+    All Visits for Patient
+    Visit:PAT-TEST-1773851416-V1 | Status:DISCHARGED | Doctor:doctor | Labs:2 | Rxs:3
+    Visit:PAT-TEST-1773851416-V2 | Status:OPEN | Doctor: | Labs:0 | Rxs:0
+
+  ✓ PASS — 2 visits returned
+
+╔══════════════════════════════════════════════════════╗
+║  12. FINAL COMPLETE RECORD
+╚══════════════════════════════════════════════════════╝
+
+  Complete visit record — PAT-TEST-1773851416-V1:
+
+  {
+    "visitId": "PAT-TEST-1773851416-V1",
+    "patientId": "PAT-TEST-1773851416",
+    "visitNumber": 1,
+    "status": "DISCHARGED",
+    "chiefComplaint": "Severe headache and high fever for 3 days",
+    "assignedDoctor": "doctor",
+    "assignedNurse": "nurse",
+    "forwardingLog": [
+      {
+        "from": "receptionist",
+        "to": "",
+        "fromRole": "receptionist",
+        "toRole": "",
+        "action": "VISIT_OPENED",
+        "instructions": "Severe headache and high fever for 3 days",
+        "timestamp": "2026-03-18T16:30:22.094Z"
+      },
+      {
+        "from": "receptionist",
+        "to": "doctor",
+        "fromRole": "receptionist",
+        "toRole": "doctor",
+        "action": "DOCTOR_ASSIGNED",
+        "instructions": "",
+        "timestamp": "2026-03-18T16:30:25.842Z"
+      },
+      {
+        "from": "receptionist",
+        "to": "nurse",
+        "fromRole": "receptionist",
+        "toRole": "nurse",
+        "action": "NURSE_ASSIGNED",
+        "instructions": "",
+        "timestamp": "2026-03-18T16:30:29.497Z"
+      },
+      {
+        "from": "receptionist",
+        "to": "doctor",
+        "fromRole": "receptionist",
+        "toRole": "doctor",
+        "action": "DOCTOR_ASSIGNED",
+        "instructions": "",
+        "timestamp": "2026-03-18T16:30:32.863Z"
+      },
+      {
+        "from": "nurse",
+        "to": "",
+        "fromRole": "nurse",
+        "toRole": "",
+        "action": "VITALS_RECORDED",
+        "instructions": "BP:140/90 Temp:99.2F Pulse:88bpm",
+        "timestamp": "2026-03-18T16:30:39.814Z"
+      },
+      {
+        "from": "nurse",
+        "to": "",
+        "fromRole": "nurse",
+        "toRole": "",
+        "action": "CARE_NOTE_ADDED",
+        "instructions": "Patient is alert and cooperative. Given paracetamol for fever.",
+        "timestamp": "2026-03-18T16:30:43.388Z"
+      },
+      {
+        "from": "nurse",
+        "to": "",
+        "fromRole": "nurse",
+        "toRole": "",
+        "action": "CARE_NOTE_ADDED",
+        "instructions": "Fever reduced to 98.6F after medication. Patient resting.",
+        "timestamp": "2026-03-18T16:30:46.649Z"
+      },
+      {
+        "from": "doctor",
+        "to": "",
+        "fromRole": "doctor",
+        "toRole": "",
+        "action": "DIAGNOSIS_NOTES_UPDATED",
+        "instructions": "Suspected viral fever. Awaiting lab confirmation.",
+        "timestamp": "2026-03-18T16:30:50.114Z"
+      },
+      {
+        "from": "doctor",
+        "to": "",
+        "fromRole": "doctor",
+        "toRole": "",
+        "action": "DIAGNOSIS_NOTES_UPDATED",
+        "instructions": "Confirmed dengue fever based on symptoms and lab results.",
+        "timestamp": "2026-03-18T16:30:53.482Z"
+      },
+      {
+        "from": "doctor",
+        "to": "",
+        "fromRole": "doctor",
+        "toRole": "",
+        "action": "PRESCRIPTION_UPDATED",
+        "instructions": "v1: Paracetamol 500mg, ORS sachets",
+        "timestamp": "2026-03-18T16:30:56.839Z"
+      },
+      {
+        "from": "doctor",
+        "to": "",
+        "fromRole": "doctor",
+        "toRole": "",
+        "action": "PRESCRIPTION_UPDATED",
+        "instructions": "v2: Paracetamol 500mg, ORS sachets, Doxycycline 100mg",
+        "timestamp": "2026-03-18T16:31:00.319Z"
+      },
+      {
+        "from": "doctor",
+        "to": "nurse",
+        "fromRole": "doctor",
+        "toRole": "nurse",
+        "action": "FORWARD_TO_NURSE",
+        "instructions": "Monitor temperature every 2 hours. Record fluid intake.",
+        "timestamp": "2026-03-18T16:31:04.424Z"
+      },
+      {
+        "from": "nurse",
+        "to": "",
+        "fromRole": "nurse",
+        "toRole": "",
+        "action": "CARE_NOTE_ADDED",
+        "instructions": "Temp 101F at 2pm. Fluid 1.5L. Improving.",
+        "timestamp": "2026-03-18T16:31:07.972Z"
+      },
+      {
+        "from": "nurse",
+        "to": "doctor",
+        "fromRole": "nurse",
+        "toRole": "doctor",
+        "action": "FORWARD_TO_DOCTOR",
+        "instructions": "Temperature still elevated. Patient has rash on arms.",
+        "timestamp": "2026-03-18T16:31:11.239Z"
+      },
+      {
+        "from": "doctor",
+        "to": "lab",
+        "fromRole": "doctor",
+        "toRole": "lab",
+        "action": "FORWARD_TO_LAB",
+        "instructions": "Tests: NS1 Antigen, CBC, Platelet Count. Fasting sample. Priority urgent.",
+        "labRequestId": "PAT-TEST-1773851416-V1-L1",
+        "timestamp": "2026-03-18T16:31:14.689Z"
+      },
+      {
+        "from": "doctor",
+        "to": "lab",
+        "fromRole": "doctor",
+        "toRole": "lab",
+        "action": "FORWARD_TO_LAB",
+        "instructions": "Tests: Liver Function Test. Check for liver involvement",
+        "labRequestId": "PAT-TEST-1773851416-V1-L2",
+        "timestamp": "2026-03-18T16:31:18.443Z"
+      },
+      {
+        "from": "labreceptionist",
+        "to": "",
+        "fromRole": "labreceptionist",
+        "toRole": "",
+        "action": "LAB_REQUEST_ACKNOWLEDGED",
+        "instructions": "Acknowledged: NS1 Antigen, CBC, Platelet Count",
+        "labRequestId": "PAT-TEST-1773851416-V1-L1",
+        "timestamp": "2026-03-18T16:31:22.353Z"
+      },
+      {
+        "from": "labtechnician",
+        "to": "",
+        "fromRole": "labtechnician",
+        "toRole": "",
+        "action": "LAB_RESULT_SUBMITTED",
+        "instructions": "Results submitted for NS1 Antigen, CBC, Platelet Count",
+        "labRequestId": "PAT-TEST-1773851416-V1-L1",
+        "timestamp": "2026-03-18T16:31:26.022Z"
+      },
+      {
+        "from": "labreceptionist",
+        "to": "",
+        "fromRole": "labreceptionist",
+        "toRole": "",
+        "action": "LAB_REQUEST_ACKNOWLEDGED",
+        "instructions": "Acknowledged: Liver Function Test",
+        "labRequestId": "PAT-TEST-1773851416-V1-L2",
+        "timestamp": "2026-03-18T16:31:29.661Z"
+      },
+      {
+        "from": "labsupervisor",
+        "to": "doctor",
+        "fromRole": "labsupervisor",
+        "toRole": "doctor",
+        "action": "LAB_RESULT_APPROVED",
+        "instructions": "Approved results for NS1 Antigen, CBC, Platelet Count",
+        "labRequestId": "PAT-TEST-1773851416-V1-L1",
+        "timestamp": "2026-03-18T16:31:32.932Z"
+      },
+      {
+        "from": "doctor",
+        "to": "",
+        "fromRole": "doctor",
+        "toRole": "",
+        "action": "PRESCRIPTION_UPDATED",
+        "instructions": "v3: Paracetamol 500mg q6h, ORS 200ml q4h, Doxycycline 100mg BD x5d",
+        "timestamp": "2026-03-18T16:31:37.145Z"
+      },
+      {
+        "from": "doctor",
+        "to": "",
+        "fromRole": "doctor",
+        "toRole": "",
+        "action": "VISIT_FINALIZED",
+        "instructions": "Dengue Fever (NS1 Antigen Positive) with thrombocytopenia",
+        "timestamp": "2026-03-18T16:31:40.610Z"
+      },
+      {
+        "from": "pharmacist",
+        "to": "",
+        "fromRole": "pharmacist",
+        "toRole": "",
+        "action": "MEDICATION_DISPENSED",
+        "instructions": "Paracetamol 500mg x20, Doxycycline 100mg x10, ORS x10",
+        "timestamp": "2026-03-18T16:31:44.553Z"
+      },
+      {
+        "from": "medrecordofficer",
+        "to": "",
+        "fromRole": "medrecordofficer",
+        "toRole": "",
+        "action": "RECORD_FINALIZED",
+        "instructions": "Official record finalized. Ready for insurance claim.",
+        "timestamp": "2026-03-18T16:31:48.109Z"
+      },
+      {
+        "from": "billingofficer",
+        "to": "",
+        "fromRole": "billingofficer",
+        "toRole": "",
+        "action": "CLAIM_SUBMITTED",
+        "instructions": "Claim CLM-1773851511 submitted for ₹28500",
+        "timestamp": "2026-03-18T16:31:51.972Z"
+      },
+      {
+        "from": "claimsauditor",
+        "to": "",
+        "fromRole": "claimsauditor",
+        "toRole": "",
+        "action": "CLAIM_AUDITED",
+        "instructions": "All documents verified. Dengue confirmed by lab.",
+        "timestamp": "2026-03-18T16:31:55.798Z"
+      },
+      {
+        "from": "insuranceofficer",
+        "to": "",
+        "fromRole": "insuranceofficer",
+        "toRole": "",
+        "action": "CLAIM_APPROVED",
+        "instructions": "Dengue covered under policy IN-2024-HOSP",
+        "timestamp": "2026-03-18T16:31:59.268Z"
+      },
+      {
+        "from": "hospitaladmin",
+        "to": "",
+        "fromRole": "admin",
+        "toRole": "",
+        "action": "PATIENT_DISCHARGED",
+        "instructions": "Recovered. Discharged stable. Follow-up in 1 week.",
+        "timestamp": "2026-03-18T16:32:03.230Z"
+      }
+    ],
+    "diagnosisNotes": "Confirmed dengue fever based on symptoms and lab results.",
+    "finalDiagnosis": "Dengue Fever (NS1 Antigen Positive) with thrombocytopenia",
+    "vitals": {
+      "bloodPressure": "140/90",
+      "temperature": "99.2F",
+      "pulse": "88bpm",
+      "weight": "75kg",
+      "height": "175cm",
+      "oxygenSat": "98%",
+      "recordedBy": "nurse",
+      "recordedAt": "2026-03-18T16:30:39.814Z"
+    },
+    "prescriptions": [
+      {
+        "version": 1,
+        "medications": [
+          "Paracetamol 500mg",
+          "ORS sachets"
+        ],
+        "instructions": "Every 6 hours",
+        "prescribedBy": "doctor",
+        "prescribedAt": "2026-03-18T16:30:56.839Z"
+      },
+      {
+        "version": 2,
+        "medications": [
+          "Paracetamol 500mg",
+          "ORS sachets",
+          "Doxycycline 100mg"
+        ],
+        "instructions": "Added Doxycycline",
+        "prescribedBy": "doctor",
+        "prescribedAt": "2026-03-18T16:31:00.319Z"
+      },
+      {
+        "version": 3,
+        "medications": [
+          "Paracetamol 500mg q6h",
+          "ORS 200ml q4h",
+          "Doxycycline 100mg BD x5d"
+        ],
+        "instructions": "Dengue confirmed. No aspirin or NSAIDs.",
+        "prescribedBy": "doctor",
+        "prescribedAt": "2026-03-18T16:31:37.145Z"
+      }
+    ],
+    "labRequests": [
+      {
+        "labRequestId": "PAT-TEST-1773851416-V1-L1",
+        "visitId": "PAT-TEST-1773851416-V1",
+        "tests": [
+          "NS1 Antigen",
+          "CBC",
+          "Platelet Count"
+        ],
+        "instructions": "Fasting sample. Priority urgent.",
+        "requestedBy": "doctor",
+        "requestedAt": "2026-03-18T16:31:14.689Z",
+        "status": "APPROVED",
+        "acknowledgedBy": "labreceptionist",
+        "acknowledgedAt": "2026-03-18T16:31:22.353Z",
+        "submittedBy": "labtechnician",
+        "submittedAt": "2026-03-18T16:31:26.022Z",
+        "results": {
+          "NS1 Antigen": "Positive",
+          "CBC": "WBC:4500, RBC:4.2M",
+          "Platelet Count": "85000 (Low)"
+        },
+        "resultsHash": "sha256:dengue-lab-hash-001",
+        "approvedBy": "labsupervisor",
+        "approvedAt": "2026-03-18T16:31:32.932Z"
+      },
+      {
+        "labRequestId": "PAT-TEST-1773851416-V1-L2",
+        "visitId": "PAT-TEST-1773851416-V1",
+        "tests": [
+          "Liver Function Test"
+        ],
+        "instructions": "Check for liver involvement",
+        "requestedBy": "doctor",
+        "requestedAt": "2026-03-18T16:31:18.443Z",
+        "status": "ACKNOWLEDGED",
+        "acknowledgedBy": "labreceptionist",
+        "acknowledgedAt": "2026-03-18T16:31:29.661Z",
+        "submittedBy": "",
+        "submittedAt": "",
+        "results": {},
+        "resultsHash": "",
+        "approvedBy": "",
+        "approvedAt": ""
+      }
+    ],
+    "labRequestCount": 2,
+    "careNotes": [
+      {
+        "note": "Patient is alert and cooperative. Given paracetamol for fever.",
+        "recordedBy": "nurse",
+        "recordedAt": "2026-03-18T16:30:43.388Z"
+      },
+      {
+        "note": "Fever reduced to 98.6F after medication. Patient resting.",
+        "recordedBy": "nurse",
+        "recordedAt": "2026-03-18T16:30:46.649Z"
+      },
+      {
+        "note": "Temp 101F at 2pm. Fluid 1.5L. Improving.",
+        "recordedBy": "nurse",
+        "recordedAt": "2026-03-18T16:31:07.972Z"
+      }
+    ],
+    "medicationDetails": "Paracetamol 500mg x20, Doxycycline 100mg x10, ORS x10",
+    "medicationDispensedBy": "pharmacist",
+    "recordFinalizedBy": "medrecordofficer",
+    "dischargeNotes": "Recovered. Discharged stable. Follow-up in 1 week.",
+    "dischargedBy": "hospitaladmin",
+    "finalizedBy": "doctor",
+    "finalizedAt": "2026-03-18T16:31:40.610Z",
+    "claimId": "CLM-1773851511",
+    "claimAmount": 28500,
+    "claimSubmittedBy": "billingofficer",
+    "auditedBy": "claimsauditor",
+    "auditNotes": "All documents verified. Dengue confirmed by lab.",
+    "claimStatus": "APPROVED",
+    "processedBy": "insuranceofficer",
+    "claimReason": "Dengue covered under policy IN-2024-HOSP",
+    "createdAt": "2026-03-18T16:30:22.094Z",
+    "updatedAt": "2026-03-18T16:32:03.230Z"
+  }
+
+╔═══════════════════════════════════════════════════════════╗
+║  FINAL TEST SUMMARY
+╠═══════════════════════════════════════════════════════════╣
+║  Total Tests       : 130
+║  Passed            : 130
+║  Failed            : 0
+╠═══════════════════════════════════════════════════════════╣
+║  Blockchain Stats  :
+║    Transactions     : 42 submitted
+║    Start Block      : 47
+║    End Block        : 89
+║    Blocks Written   : 42
+╠═══════════════════════════════════════════════════════════╣
+║  ✓ ALL 130 TESTS PASSED
+║  ✓ All 7 contracts verified across all 5 peers
+║  ✓ Full journey OPEN → DISCHARGED
+║  ✓ Claim approval + rejection flows
+║  ✓ Role-based access control
+║  ✓ Multiple lab requests + prescription versions
+║  ✓ Cert details + block tracking per interaction
+╚═══════════════════════════════════════════════════════════╝
+
+avi@avi-VMware-Virtual-Platform:~/Data/fabric-samples/ehr_test_6/ehr-network$ 
+
