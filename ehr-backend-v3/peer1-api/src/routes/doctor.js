@@ -8,9 +8,12 @@ const { wrap, parseResult } = require('../middleware/errorHandler');
 const { fetchByCID, pinJSON } = require('../fabric/ipfsClient');
 const logger = require('../config/logger');
 
-const { getOrCreateActorKeys, logSignatureLocally, signDocument } = require('../utils/cryptoUtils');
+const { signDocument, logSignatureLocally } = require('../utils/cryptoUtils');
+const { verifyPin } = require('./auth');
+const { getPublicKey } = require('../../../shared/keyVault');
 
-const asDoctor = [authenticate, requireRole('doctor'), peerContext];
+const asDoctor       = [authenticate, requireRole('doctor'), peerContext];
+const asDoctorSigned = [authenticate, requireRole('doctor'), peerContext, verifyPin];
 
 // Helper: fetch visit on-chain record + IPFS JSON together
 async function getVisitWithContent(contract, visitId) {
@@ -81,7 +84,7 @@ router.get('/visits/:id/ehr',
 // ── PUT /doctor/visits/:id/diagnosis ─────────────────────────
 // Fetch visit JSON → update diagnosisNotes → repin → UpdateDiagnosisNotes(newCID)
 router.put('/visits/:id/diagnosis',
-  ...asDoctor,
+  ...asDoctorSigned,
   [
     param('id').trim().notEmpty(),
     body('notes').trim().notEmpty().withMessage('notes required'),
@@ -104,15 +107,16 @@ router.put('/visits/:id/diagnosis',
     // ==========================================
     // THE CRYPTOGRAPHIC BLOCK
     // ==========================================
-    const actorKeys = getOrCreateActorKeys(req.user.userId);
-    const digitalSignature = signDocument(actorKeys.privateKey, clinical);
+    const privateKey = req.actorPrivateKey;
+    const publicKey  = await getPublicKey(req.user.userId);
+    const digitalSignature = signDocument(privateKey, clinical);
     logSignatureLocally(req.user.userId, visitId, digitalSignature);
-    
+
     clinical.securityProof = {
-        signature: digitalSignature,
-        signerPublicKey: actorKeys.publicKey,
-        signedByUserId: req.user.userId,
-        timestamp: new Date().toISOString()
+        signature:       digitalSignature,
+        signerPublicKey: publicKey,
+        signedByUserId:  req.user.userId,
+        timestamp:       new Date().toISOString()
     };
     // ==========================================
 
@@ -139,7 +143,7 @@ router.put('/visits/:id/diagnosis',
 // ── PUT /doctor/visits/:id/prescription ──────────────────────
 // Append new prescription version to IPFS JSON → repin → UpdatePrescription(newCID)
 router.put('/visits/:id/prescription',
-  ...asDoctor,
+  ...asDoctorSigned,
   [
     param('id').trim().notEmpty(),
     body('medications').isArray({ min: 1 }).withMessage('medications must be non-empty array'),
@@ -171,15 +175,16 @@ router.put('/visits/:id/prescription',
     // ==========================================
     // THE CRYPTOGRAPHIC BLOCK
     // ==========================================
-    const actorKeys = getOrCreateActorKeys(req.user.userId);
-    const digitalSignature = signDocument(actorKeys.privateKey, clinical);
+    const privateKey = req.actorPrivateKey;
+    const publicKey  = await getPublicKey(req.user.userId);
+    const digitalSignature = signDocument(privateKey, clinical);
     logSignatureLocally(req.user.userId, visitId, digitalSignature);
-    
+
     clinical.securityProof = {
-        signature: digitalSignature,
-        signerPublicKey: actorKeys.publicKey,
-        signedByUserId: req.user.userId,
-        timestamp: new Date().toISOString()
+        signature:       digitalSignature,
+        signerPublicKey: publicKey,
+        signedByUserId:  req.user.userId,
+        timestamp:       new Date().toISOString()
     };
     // ==========================================
     
@@ -205,7 +210,7 @@ router.put('/visits/:id/prescription',
 
 // ── PUT /doctor/visits/:id/forward/nurse ─────────────────────
 router.put('/visits/:id/forward/nurse',
-  ...asDoctor,
+  ...asDoctorSigned,
   [
     param('id').trim().notEmpty(),
     body('instructions').optional().isString(),
@@ -226,15 +231,16 @@ router.put('/visits/:id/forward/nurse',
     // ==========================================
     // THE CRYPTOGRAPHIC BLOCK
     // ==========================================
-    const actorKeys = getOrCreateActorKeys(req.user.userId);
-    const digitalSignature = signDocument(actorKeys.privateKey, clinical);
+    const privateKey = req.actorPrivateKey;
+    const publicKey  = await getPublicKey(req.user.userId);
+    const digitalSignature = signDocument(privateKey, clinical);
     logSignatureLocally(req.user.userId, visitId, digitalSignature);
-    
+
     clinical.securityProof = {
-        signature: digitalSignature,
-        signerPublicKey: actorKeys.publicKey,
-        signedByUserId: req.user.userId,
-        timestamp: new Date().toISOString()
+        signature:       digitalSignature,
+        signerPublicKey: publicKey,
+        signedByUserId:  req.user.userId,
+        timestamp:       new Date().toISOString()
     };
     // ==========================================
     
@@ -261,7 +267,7 @@ router.put('/visits/:id/forward/nurse',
 // ── PUT /doctor/visits/:id/forward/lab ───────────────────────
 // Add lab request entry to IPFS JSON → repin → ForwardToLab(labRequestId, newCID)
 router.put('/visits/:id/forward/lab',
-  ...asDoctor,
+  ...asDoctorSigned,
   [
     param('id').trim().notEmpty(),
     body('tests').isArray({ min: 1 }).withMessage('tests must be non-empty array'),
@@ -302,15 +308,16 @@ router.put('/visits/:id/forward/lab',
     // ==========================================
     // THE CRYPTOGRAPHIC BLOCK
     // ==========================================
-    const actorKeys = getOrCreateActorKeys(req.user.userId);
-    const digitalSignature = signDocument(actorKeys.privateKey, clinical);
+    const privateKey = req.actorPrivateKey;
+    const publicKey  = await getPublicKey(req.user.userId);
+    const digitalSignature = signDocument(privateKey, clinical);
     logSignatureLocally(req.user.userId, visitId, digitalSignature);
-    
+
     clinical.securityProof = {
-        signature: digitalSignature,
-        signerPublicKey: actorKeys.publicKey,
-        signedByUserId: req.user.userId,
-        timestamp: new Date().toISOString()
+        signature:       digitalSignature,
+        signerPublicKey: publicKey,
+        signedByUserId:  req.user.userId,
+        timestamp:       new Date().toISOString()
     };
     // ==========================================
     
@@ -336,7 +343,7 @@ router.put('/visits/:id/forward/lab',
 
 // ── PUT /doctor/visits/:id/finalize — FinalizeVisit ──────────
 router.put('/visits/:id/finalize',
-  ...asDoctor,
+  ...asDoctorSigned,
   [
     param('id').trim().notEmpty(),
     body('finalDiagnosis').trim().notEmpty().withMessage('finalDiagnosis required'),
@@ -361,15 +368,16 @@ router.put('/visits/:id/finalize',
     // ==========================================
     // THE CRYPTOGRAPHIC BLOCK
     // ==========================================
-    const actorKeys = getOrCreateActorKeys(req.user.userId);
-    const digitalSignature = signDocument(actorKeys.privateKey, clinical);
+    const privateKey = req.actorPrivateKey;
+    const publicKey  = await getPublicKey(req.user.userId);
+    const digitalSignature = signDocument(privateKey, clinical);
     logSignatureLocally(req.user.userId, visitId, digitalSignature);
-    
+
     clinical.securityProof = {
-        signature: digitalSignature,
-        signerPublicKey: actorKeys.publicKey,
-        signedByUserId: req.user.userId,
-        timestamp: new Date().toISOString()
+        signature:       digitalSignature,
+        signerPublicKey: publicKey,
+        signedByUserId:  req.user.userId,
+        timestamp:       new Date().toISOString()
     };
     // ==========================================
     
@@ -395,7 +403,7 @@ router.put('/visits/:id/finalize',
 
 // ── PUT /doctor/visits/:id/assign/nurse ──────────────────────
 router.put('/visits/:id/assign/nurse',
-  ...asDoctor,
+  ...asDoctorSigned,
   [
     param('id').trim().notEmpty(),
     body('nurseId').trim().notEmpty().withMessage('nurseId required'),
@@ -419,15 +427,16 @@ router.put('/visits/:id/assign/nurse',
     // ==========================================
     // THE CRYPTOGRAPHIC BLOCK
     // ==========================================
-    const actorKeys = getOrCreateActorKeys(req.user.userId);
-    const digitalSignature = signDocument(actorKeys.privateKey, clinical);
+    const privateKey = req.actorPrivateKey;
+    const publicKey  = await getPublicKey(req.user.userId);
+    const digitalSignature = signDocument(privateKey, clinical);
     logSignatureLocally(req.user.userId, visitId, digitalSignature);
-    
+
     clinical.securityProof = {
-        signature: digitalSignature,
-        signerPublicKey: actorKeys.publicKey,
-        signedByUserId: req.user.userId,
-        timestamp: new Date().toISOString()
+        signature:       digitalSignature,
+        signerPublicKey: publicKey,
+        signedByUserId:  req.user.userId,
+        timestamp:       new Date().toISOString()
     };
     // ==========================================
     
@@ -455,7 +464,7 @@ router.put('/visits/:id/assign/nurse',
 // Doctor updates a section of the patient's persistent EHR
 // Body: { section: 'allergies'|'chronicConditions'|..., data: [...] }
 router.put('/visits/:id/ehr',
-  ...asDoctor,
+  ...asDoctorSigned,
   [
     param('id').trim().notEmpty(),
     body('section').trim().notEmpty().withMessage('section required'),
@@ -492,15 +501,16 @@ router.put('/visits/:id/ehr',
     // ==========================================
     // THE CRYPTOGRAPHIC BLOCK
     // ==========================================
-    const actorKeys = getOrCreateActorKeys(req.user.userId);
-    const digitalSignature = signDocument(actorKeys.privateKey, ehr); // Notice we sign `ehr` here, not `clinical`
+    const privateKey = req.actorPrivateKey;
+    const publicKey  = await getPublicKey(req.user.userId);
+    const digitalSignature = signDocument(privateKey, ehr);
     logSignatureLocally(req.user.userId, visitId, digitalSignature);
-    
+
     ehr.securityProof = {
-        signature: digitalSignature,
-        signerPublicKey: actorKeys.publicKey,
-        signedByUserId: req.user.userId,
-        timestamp: new Date().toISOString()
+        signature:       digitalSignature,
+        signerPublicKey: publicKey,
+        signedByUserId:  req.user.userId,
+        timestamp:       new Date().toISOString()
     };
     // ==========================================
 

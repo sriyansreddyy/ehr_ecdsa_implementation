@@ -8,9 +8,12 @@ const { wrap, parseResult } = require('../middleware/errorHandler');
 const { fetchByCID, pinJSON } = require('../fabric/ipfsClient');
 const logger = require('../config/logger');
 
-const { getOrCreateActorKeys, logSignatureLocally, signDocument } = require('../utils/cryptoUtils');
+const { signDocument, logSignatureLocally } = require('../utils/cryptoUtils');
+const { verifyPin } = require('./auth');
+const { getPublicKey } = require('../../../shared/keyVault');
 
-const asNurse = [authenticate, requireRole('nurse'), peerContext];
+const asNurse       = [authenticate, requireRole('nurse'), peerContext];
+const asNurseSigned = [authenticate, requireRole('nurse'), peerContext, verifyPin];
 
 async function getVisitJson(contract, visitId) {
   const onChain = parseResult(await contract.evaluateTransaction('VisitContract:GetVisit', visitId));
@@ -41,7 +44,7 @@ router.get('/visits/:id/prescription', ...asNurse, wrap(async (req, res) => {
 
 // ── PUT /nurse/visits/:id/vitals — RecordVitals ───────────────
 router.put('/visits/:id/vitals',
-  ...asNurse,
+  ...asNurseSigned,
   [
     param('id').trim().notEmpty(),
     body('vitals').isObject().withMessage('vitals must be a JSON object'),
@@ -70,15 +73,16 @@ router.put('/visits/:id/vitals',
     // ==========================================
     // THE CRYPTOGRAPHIC BLOCK
     // ==========================================
-    const actorKeys = getOrCreateActorKeys(req.user.userId);
-    const digitalSignature = signDocument(actorKeys.privateKey, clinical); 
+    const privateKey = req.actorPrivateKey;
+    const publicKey  = await getPublicKey(req.user.userId);
+    const digitalSignature = signDocument(privateKey, clinical);
     logSignatureLocally(req.user.userId, visitId, digitalSignature);
-    
+
     clinical.securityProof = {
-        signature: digitalSignature,
-        signerPublicKey: actorKeys.publicKey,
-        signedByUserId: req.user.userId,
-        timestamp: new Date().toISOString()
+        signature:       digitalSignature,
+        signerPublicKey: publicKey,
+        signedByUserId:  req.user.userId,
+        timestamp:       new Date().toISOString()
     };
     // ==========================================
 
@@ -104,7 +108,7 @@ router.put('/visits/:id/vitals',
 
 // ── POST /nurse/visits/:id/carenote — AddCareNote ────────────
 router.post('/visits/:id/carenote',
-  ...asNurse,
+  ...asNurseSigned,
   [
     param('id').trim().notEmpty(),
     body('note').trim().notEmpty().withMessage('note required'),
@@ -132,15 +136,16 @@ router.post('/visits/:id/carenote',
     // ==========================================
     // THE CRYPTOGRAPHIC BLOCK
     // ==========================================
-    const actorKeys = getOrCreateActorKeys(req.user.userId);
-    const digitalSignature = signDocument(actorKeys.privateKey, clinical); 
+    const privateKey = req.actorPrivateKey;
+    const publicKey  = await getPublicKey(req.user.userId);
+    const digitalSignature = signDocument(privateKey, clinical);
     logSignatureLocally(req.user.userId, visitId, digitalSignature);
-    
+
     clinical.securityProof = {
-        signature: digitalSignature,
-        signerPublicKey: actorKeys.publicKey,
-        signedByUserId: req.user.userId,
-        timestamp: new Date().toISOString()
+        signature:       digitalSignature,
+        signerPublicKey: publicKey,
+        signedByUserId:  req.user.userId,
+        timestamp:       new Date().toISOString()
     };
     // ==========================================
 
@@ -166,7 +171,7 @@ router.post('/visits/:id/carenote',
 
 // ── PUT /nurse/visits/:id/forward/doctor ─────────────────────
 router.put('/visits/:id/forward/doctor',
-  ...asNurse,
+  ...asNurseSigned,
   [
     param('id').trim().notEmpty(),
     body('notes').optional().isString(),
@@ -188,15 +193,16 @@ router.put('/visits/:id/forward/doctor',
     // ==========================================
     // THE CRYPTOGRAPHIC BLOCK
     // ==========================================
-    const actorKeys = getOrCreateActorKeys(req.user.userId);
-    const digitalSignature = signDocument(actorKeys.privateKey, clinical); 
+    const privateKey = req.actorPrivateKey;
+    const publicKey  = await getPublicKey(req.user.userId);
+    const digitalSignature = signDocument(privateKey, clinical);
     logSignatureLocally(req.user.userId, visitId, digitalSignature);
-    
+
     clinical.securityProof = {
-        signature: digitalSignature,
-        signerPublicKey: actorKeys.publicKey,
-        signedByUserId: req.user.userId,
-        timestamp: new Date().toISOString()
+        signature:       digitalSignature,
+        signerPublicKey: publicKey,
+        signedByUserId:  req.user.userId,
+        timestamp:       new Date().toISOString()
     };
     // ==========================================
 
@@ -223,7 +229,7 @@ router.put('/visits/:id/forward/doctor',
 // ── PUT /nurse/visits/:id/ehr — Nurse updates EHR section ────
 // Nurse can update: allergies, chronicConditions, immunizations, lifestyle
 router.put('/visits/:id/ehr',
-  ...asNurse,
+  ...asNurseSigned,
   [
     param('id').trim().notEmpty(),
     body('section').trim().notEmpty(),
@@ -252,15 +258,16 @@ router.put('/visits/:id/ehr',
     // ==========================================
     // THE CRYPTOGRAPHIC BLOCK
     // ==========================================
-    const actorKeys = getOrCreateActorKeys(req.user.userId);
-    const digitalSignature = signDocument(actorKeys.privateKey, ehr); // Notice we sign `ehr` here, not `clinical`
+    const privateKey = req.actorPrivateKey;
+    const publicKey  = await getPublicKey(req.user.userId);
+    const digitalSignature = signDocument(privateKey, ehr);
     logSignatureLocally(req.user.userId, visitId, digitalSignature);
-    
+
     ehr.securityProof = {
-        signature: digitalSignature,
-        signerPublicKey: actorKeys.publicKey,
-        signedByUserId: req.user.userId,
-        timestamp: new Date().toISOString()
+        signature:       digitalSignature,
+        signerPublicKey: publicKey,
+        signedByUserId:  req.user.userId,
+        timestamp:       new Date().toISOString()
     };
     // ==========================================
 

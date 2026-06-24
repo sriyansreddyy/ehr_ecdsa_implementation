@@ -8,7 +8,9 @@ const { wrap, parseResult } = require('../middleware/errorHandler');
 const { fetchByCID, pinJSON } = require('../fabric/ipfsClient');
 const logger = require('../config/logger');
 
-const { getOrCreateActorKeys, logSignatureLocally, signDocument } = require('../utils/cryptoUtils');
+const { signDocument, logSignatureLocally } = require('../utils/cryptoUtils');
+const { verifyPin } = require('./auth');
+const { getPublicKey } = require('../../../shared/keyVault');
 
 const PROVIDER_ROLES = ['billingofficer', 'claimsauditor', 'insuranceofficer', 'provideradmin'];
 
@@ -33,7 +35,7 @@ router.get('/visits/:id/history',
 
 // ── POST /claims/visits/:id/submit — SubmitClaim ─────────────
 router.post('/visits/:id/submit',
-  authenticate, requireRole('billingofficer'), peerContext,
+  authenticate, requireRole('billingofficer'), peerContext, verifyPin,
   [
     param('id').trim().notEmpty(),
     body('claimId').trim().notEmpty().withMessage('claimId required'),
@@ -60,15 +62,16 @@ router.post('/visits/:id/submit',
     // ==========================================
     // THE CRYPTOGRAPHIC BLOCK
     // ==========================================
-    const actorKeys = getOrCreateActorKeys(req.user.userId);
-    const digitalSignature = signDocument(actorKeys.privateKey, clinical); 
+    const privateKey = req.actorPrivateKey;
+    const publicKey  = await getPublicKey(req.user.userId);
+    const digitalSignature = signDocument(privateKey, clinical);
     logSignatureLocally(req.user.userId, visitId, digitalSignature);
-    
+
     clinical.securityProof = {
-        signature: digitalSignature,
-        signerPublicKey: actorKeys.publicKey,
-        signedByUserId: req.user.userId,
-        timestamp: new Date().toISOString()
+        signature:       digitalSignature,
+        signerPublicKey: publicKey,
+        signedByUserId:  req.user.userId,
+        timestamp:       new Date().toISOString()
     };
     // ==========================================
 
@@ -94,7 +97,7 @@ router.post('/visits/:id/submit',
 
 // ── PUT /claims/visits/:id/audit — AuditClaim ────────────────
 router.put('/visits/:id/audit',
-  authenticate, requireRole('claimsauditor'), peerContext,
+  authenticate, requireRole('claimsauditor'), peerContext, verifyPin,
   [
     param('id').trim().notEmpty(),
     body('auditNotes').trim().notEmpty().withMessage('auditNotes required'),
@@ -118,15 +121,16 @@ router.put('/visits/:id/audit',
     // ==========================================
     // THE CRYPTOGRAPHIC BLOCK
     // ==========================================
-    const actorKeys = getOrCreateActorKeys(req.user.userId);
-    const digitalSignature = signDocument(actorKeys.privateKey, clinical); 
+    const privateKey = req.actorPrivateKey;
+    const publicKey  = await getPublicKey(req.user.userId);
+    const digitalSignature = signDocument(privateKey, clinical);
     logSignatureLocally(req.user.userId, visitId, digitalSignature);
-    
+
     clinical.securityProof = {
-        signature: digitalSignature,
-        signerPublicKey: actorKeys.publicKey,
-        signedByUserId: req.user.userId,
-        timestamp: new Date().toISOString()
+        signature:       digitalSignature,
+        signerPublicKey: publicKey,
+        signedByUserId:  req.user.userId,
+        timestamp:       new Date().toISOString()
     };
     // ==========================================
 
@@ -152,7 +156,7 @@ router.put('/visits/:id/audit',
 
 // ── PUT /claims/visits/:id/process — ProcessClaim ────────────
 router.put('/visits/:id/process',
-  authenticate, requireRole('insuranceofficer'), peerContext,
+  authenticate, requireRole('insuranceofficer'), peerContext, verifyPin,
   [
     param('id').trim().notEmpty(),
     body('decision').trim().toUpperCase().isIn(['APPROVED', 'REJECTED'])
@@ -180,15 +184,16 @@ router.put('/visits/:id/process',
     // ==========================================
     // THE CRYPTOGRAPHIC BLOCK
     // ==========================================
-    const actorKeys = getOrCreateActorKeys(req.user.userId);
-    const digitalSignature = signDocument(actorKeys.privateKey, clinical); 
+    const privateKey = req.actorPrivateKey;
+    const publicKey  = await getPublicKey(req.user.userId);
+    const digitalSignature = signDocument(privateKey, clinical);
     logSignatureLocally(req.user.userId, visitId, digitalSignature);
-    
+
     clinical.securityProof = {
-        signature: digitalSignature,
-        signerPublicKey: actorKeys.publicKey,
-        signedByUserId: req.user.userId,
-        timestamp: new Date().toISOString()
+        signature:       digitalSignature,
+        signerPublicKey: publicKey,
+        signedByUserId:  req.user.userId,
+        timestamp:       new Date().toISOString()
     };
     // ==========================================
     

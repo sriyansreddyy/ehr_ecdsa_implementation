@@ -8,7 +8,9 @@ const { wrap, parseResult } = require('../middleware/errorHandler');
 const { initEHR }  = require('../fabric/ipfsClient');
 const logger = require('../config/logger');
 
-const { getOrCreateActorKeys, logSignatureLocally, signDocument, verifyDocument } = require('../utils/cryptoUtils');
+const { signDocument, logSignatureLocally, verifyDocument } = require('../utils/cryptoUtils');
+const { verifyPin } = require('./auth');
+const { getPublicKey } = require('../../../shared/keyVault');
 
 const canManage = [authenticate, requireRole('receptionist', 'admin'), peerContext];
 const canRead   = [authenticate, requireAnyKnownRole, peerContext];
@@ -24,7 +26,7 @@ router.get('/', ...canManage, wrap(async (req, res) => {
 // 2. Pin empty EHR JSON to IPFS via ipfs-service
 // 3. Call EhrContract:InitEHR to store the CID on-chain
 router.post('/',
-  authenticate, requireRole('receptionist', 'admin'),
+  authenticate, requireRole('receptionist', 'admin'), verifyPin,
   [
     body('patientId').trim().notEmpty(),
     body('name').trim().notEmpty(),
@@ -45,12 +47,13 @@ router.post('/',
     const demographics = { name, age, gender, bloodGroup, contact, address };
 
     // req.user.username comes directly from the JWT Auth Token
-    const actorKeys = getOrCreateActorKeys(req.user.userId);
+    const privateKey = req.actorPrivateKey;
+    const publicKey  = await getPublicKey(req.user.userId);
 
-    const digitalSignature = signDocument(actorKeys.privateKey, demographics);
+    const digitalSignature = signDocument(privateKey, demographics);
     logSignatureLocally(req.user.userId, demographics.patientId, digitalSignature);
-    
-    const isAuthentic = verifyDocument(actorKeys.publicKey, digitalSignature, demographics);
+
+    const isAuthentic = verifyDocument(publicKey, digitalSignature, demographics);
 
     if (!isAuthentic) {
         logger.error('SECURITY ALERT: Patient data failed ECDSA verification.');
@@ -60,9 +63,9 @@ router.post('/',
     logger.info('ECDSA Verification Successful, signature generated.');
 
     demographics.securityProof = {
-        signature: digitalSignature,
-        signerPublicKey: actorKeys.publicKey,
-        signedByUserId: req.user.userId
+        signature:       digitalSignature,
+        signerPublicKey: publicKey,
+        signedByUserId:  req.user.userId
     };
 
     return res.status(200).json({ success: true, message: "Local Test: ECDSA working", proof: demographics.securityProof });

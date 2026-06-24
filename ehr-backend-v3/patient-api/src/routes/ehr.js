@@ -23,7 +23,9 @@ const { wrap, parseResult } = require('../middleware/errorHandler');
 const { fetchByCID, pinJSON } = require('../fabric/ipfsClient');
 const logger = require('../config/logger');
 
-const { getOrCreateActorKeys, logSignatureLocally, signDocument } = require('../utils/cryptoUtils');
+const { signDocument, logSignatureLocally } = require('../utils/cryptoUtils');
+const { verifyPin } = require('./auth');
+const { getPublicKey } = require('../../../shared/keyVault');
 
 const secured = [authenticate, fabricContext];
 
@@ -82,7 +84,7 @@ router.get('/history', ...secured, wrap(async (req, res) => {
 //   3. Pin updated JSON → newCID
 //   4. Call EhrContract:UpdateEHRCID on chain
 router.put('/contact',
-  ...secured,
+  ...secured, verifyPin,
   [
     body('emergencyContact').optional().isObject(),
     body('emergencyContact.name').optional().isString(),
@@ -124,20 +126,16 @@ router.put('/contact',
     // ==========================================
     // THE CRYPTOGRAPHIC BLOCK
     // ==========================================
-    // Use patientId (e.g., PAT-001) for the wallet folder
-    const actorKeys = getOrCreateActorKeys(patientId);
-    
-    // Sign the EHR JSON
-    const digitalSignature = signDocument(actorKeys.privateKey, ehr); 
-    
-    // Log it locally on SYS1
-    logSignatureLocally(patientId, `ehr-contact`, digitalSignature);
-    
+    const privateKey = req.actorPrivateKey;
+    const publicKey  = await getPublicKey(patientId);
+    const digitalSignature = signDocument(privateKey, ehr);
+    logSignatureLocally(patientId, 'ehr-contact', digitalSignature);
+
     ehr.securityProof = {
-        signature: digitalSignature,
-        signerPublicKey: actorKeys.publicKey,
-        signedByUserId: patientId,
-        timestamp: new Date().toISOString()
+        signature:       digitalSignature,
+        signerPublicKey: publicKey,
+        signedByUserId:  patientId,
+        timestamp:       new Date().toISOString()
     };
     // ==========================================
 
@@ -169,7 +167,7 @@ router.put('/contact',
 // ── POST /ehr/medical-history ──────────────────────────────────────────────────
 // Patient appends a new entry to their medical history (from OCR or manual).
 router.post('/medical-history',
-  ...secured,
+  ...secured, verifyPin,
   [
     body('text').trim().notEmpty(),
     body('sourceType').optional().isString(), // 'ocr' | 'manual'
@@ -210,15 +208,16 @@ router.post('/medical-history',
     // ==========================================
     // THE CRYPTOGRAPHIC BLOCK
     // ==========================================
-    const actorKeys = getOrCreateActorKeys(patientId);
-    const digitalSignature = signDocument(actorKeys.privateKey, ehr); 
-    logSignatureLocally(patientId, `ehr-history`, digitalSignature);
-    
+    const privateKey = req.actorPrivateKey;
+    const publicKey  = await getPublicKey(patientId);
+    const digitalSignature = signDocument(privateKey, ehr);
+    logSignatureLocally(patientId, 'ehr-history', digitalSignature);
+
     ehr.securityProof = {
-        signature: digitalSignature,
-        signerPublicKey: actorKeys.publicKey,
-        signedByUserId: patientId,
-        timestamp: new Date().toISOString()
+        signature:       digitalSignature,
+        signerPublicKey: publicKey,
+        signedByUserId:  patientId,
+        timestamp:       new Date().toISOString()
     };
     // ==========================================
 

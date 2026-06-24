@@ -1,78 +1,77 @@
+'use strict';
+
+/**
+ * cryptoUtils.js  (updated)
+ * -------------------------
+ * getOrCreateActorKeys() has been REMOVED.
+ * Key generation and storage is now handled by keyVault.js.
+ *
+ * What remains:
+ *   signDocument(privateKeyPem, documentObject)  → hex signature
+ *   verifyDocument(publicKeyPem, signature, documentObject) → bool
+ *   logSignatureLocally(actorId, contextId, signature) → void (file log)
+ *
+ * Usage in a route:
+ *
+ *   const { signDocument, logSignatureLocally } = require('../utils/cryptoUtils');
+ *   // privateKey comes from req.actorPrivateKey (set by verifyPin middleware)
+ *   const sig = signDocument(req.actorPrivateKey, clinical);
+ *   logSignatureLocally(req.user.userId, visitId, sig);
+ *   // req.actorPrivateKey goes out of scope at end of handler — GC'd
+ */
+
 const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
+const fs     = require('fs');
+const path   = require('path');
 
-// Define where the local keystore folders will live
-const KEYSTORE_DIR = path.join(__dirname, '../../local_keystore');
+// Signature log still goes to disk (audit trail only — no key material here)
+const LOG_DIR = path.join(__dirname, '../../signature_logs');
 
-// 1. Existing function: Generates the math
-function generateActorKeys() {
-    const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', {
-        namedCurve: 'prime256v1',
-        publicKeyEncoding: { type: 'spki', format: 'pem' },
-        privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
-    });
-    return { publicKey, privateKey };
+/**
+ * signDocument(privateKeyPem, documentObject)
+ * --------------------------------------------
+ * Signs a JSON-serialisable object with the actor's EC private key.
+ * Returns the signature as a hex string.
+ */
+function signDocument(privateKeyPem, documentObject) {
+  const dataString = JSON.stringify(documentObject);
+  const sign = crypto.createSign('SHA256');
+  sign.update(dataString);
+  sign.end();
+  return sign.sign(privateKeyPem, 'hex');
 }
 
-// 2. NEW: Manages the Actor's Folder
-function getOrCreateActorKeys(actorId) {
-    const actorDir = path.join(KEYSTORE_DIR, actorId);
-    const pubPath = path.join(actorDir, 'public.pem');
-    const privPath = path.join(actorDir, 'private.pem');
-
-    // If the actor already has a folder and keys, read them from the file
-    if (fs.existsSync(pubPath) && fs.existsSync(privPath)) {
-        return {
-            publicKey: fs.readFileSync(pubPath, 'utf8'),
-            privateKey: fs.readFileSync(privPath, 'utf8')
-        };
-    }
-
-    // Otherwise, generate new keys and create the folder
-    const keys = generateActorKeys();
-    
-    fs.mkdirSync(actorDir, { recursive: true }); // Creates the folder if it doesn't exist
-    fs.writeFileSync(pubPath, keys.publicKey);
-    fs.writeFileSync(privPath, keys.privateKey);
-
-    return keys;
+/**
+ * verifyDocument(publicKeyPem, hexSignature, documentObject)
+ * -----------------------------------------------------------
+ * Verifies a signature previously produced by signDocument.
+ * Returns true if valid, false otherwise.
+ */
+function verifyDocument(publicKeyPem, hexSignature, documentObject) {
+  const dataString = JSON.stringify(documentObject);
+  const verify = crypto.createVerify('SHA256');
+  verify.update(dataString);
+  verify.end();
+  return verify.verify(publicKeyPem, hexSignature, 'hex');
 }
 
-// 3. NEW: Saves a log of the signature in the Actor's folder
-function logSignatureLocally(actorId, patientId, signature) {
-    const actorDir = path.join(KEYSTORE_DIR, actorId);
-    if (!fs.existsSync(actorDir)) fs.mkdirSync(actorDir, { recursive: true });
+/**
+ * logSignatureLocally(actorId, contextId, signature)
+ * ---------------------------------------------------
+ * Appends an audit entry to a local log file.
+ * This is an audit trail only — it contains no key material.
+ */
+function logSignatureLocally(actorId, contextId, signature) {
+  const actorLogDir = path.join(LOG_DIR, actorId);
+  if (!fs.existsSync(actorLogDir)) fs.mkdirSync(actorLogDir, { recursive: true });
 
-    const sigLogPath = path.join(actorDir, 'signatures.log');
-    const timestamp = new Date().toISOString();
-    const logEntry = `[${timestamp}] Signed Patient: ${patientId} | Signature: ${signature}\n`;
-    
-    fs.appendFileSync(sigLogPath, logEntry);
+  const logPath  = path.join(actorLogDir, 'signatures.log');
+  const logEntry = `[${new Date().toISOString()}] context=${contextId} sig=${signature}\n`;
+  fs.appendFileSync(logPath, logEntry);
 }
 
-// 4. Existing function: Signs the document
-function signDocument(privateKey, documentObject) {
-    const dataString = JSON.stringify(documentObject);
-    const sign = crypto.createSign('SHA256');
-    sign.update(dataString);
-    sign.end();
-    return sign.sign(privateKey, 'hex'); 
-}
-
-// 5. Existing function: Verifies the document
-function verifyDocument(publicKey, signature, documentObject) {
-    const dataString = JSON.stringify(documentObject);
-    const verify = crypto.createVerify('SHA256');
-    verify.update(dataString);
-    verify.end();
-    return verify.verify(publicKey, signature, 'hex');
-}
-
-// Export the new functions alongside the old ones
 module.exports = {
-    getOrCreateActorKeys,
-    logSignatureLocally,
-    signDocument,
-    verifyDocument
+  signDocument,
+  verifyDocument,
+  logSignatureLocally,
 };

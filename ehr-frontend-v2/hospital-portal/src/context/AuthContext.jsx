@@ -1,53 +1,81 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react'
-import { loginUser, createApiClient } from '../utils/api'
-import { ensureUserKey, getUserKey } from '../utils/keyAuth'
+import { createContext, useContext, useState, useCallback } from 'react'
+import { createApiClient } from '../utils/api'
+import axios from 'axios'
 
 const AuthContext = createContext(null)
 
-export function AuthProvider({ children }) {
-  const [user, setUser]   = useState(() => {
-    try { return JSON.parse(localStorage.getItem('ehr_hospital_user')) } catch { return null }
-  })
-  const [token, setToken] = useState(() => localStorage.getItem('ehr_hospital_token') || null)
-  const [userKey, setUserKey] = useState(() => {
-    const stored = (() => {
-      try { return JSON.parse(localStorage.getItem('ehr_hospital_user')) } catch { return null }
-    })()
-    return stored?.username ? getUserKey(stored.username) : null
-  })
+const AUTH_BASES = [
+  'http://localhost:3001',
+  'http://localhost:3002',
+  'http://localhost:3003',
+]
 
-  useEffect(() => {
-    if (user?.username && !userKey) {
-      setUserKey(ensureUserKey(user.username))
-    }
-  }, [user, userKey])
+export function AuthProvider({ children }) {
+  // Session state — token and user kept only in React state (no localStorage)
+  const [user,  setUser]  = useState(null)
+  const [token, setToken] = useState(null)
 
   const api = useCallback(
     () => createApiClient(token, user?.role),
     [token, user?.role]
   )
 
-  const login = async (username, password) => {
-    const data = await loginUser(username, password)
-    const userData = data.data
-    setToken(userData.token)
-    setUser(userData.user)
-    setUserKey(ensureUserKey(userData.user.username))
-    localStorage.setItem('ehr_hospital_token', userData.token)
-    localStorage.setItem('ehr_hospital_user', JSON.stringify(userData.user))
-    return userData
+  /**
+   * loginStep1(username, password)
+   * --------------------------------
+   * Sends credentials to the backend.
+   * On success, backend sends OTP to the actor's registered email.
+   * Returns { maskedEmail } so the UI can show "Code sent to s***@..."
+   * Does NOT issue a JWT yet.
+   */
+  const loginStep1 = async (username, password) => {
+    for (const base of AUTH_BASES) {
+      try {
+        const res = await axios.post(`${base}/auth/login`, { username, password })
+        if (res.data.success) {
+          return { ...res.data.data, apiBase: base }
+        }
+      } catch (err) {
+        if (err.response?.status === 401) {
+          throw new Error(err.response.data.error || 'Invalid credentials')
+        }
+      }
+    }
+    throw new Error('Invalid credentials')
+  }
+
+  /**
+   * loginStep2(username, otp)
+   * --------------------------
+   * Verifies the OTP. On success, backend issues a JWT.
+   * Sets user + token in React state (never in localStorage).
+   */
+  const loginStep2 = async (username, otp) => {
+    for (const base of AUTH_BASES) {
+      try {
+        const res = await axios.post(`${base}/auth/verify-otp`, { username, otp })
+        if (res.data.success) {
+          const { token: newToken, user: userData } = res.data.data
+          setToken(newToken)
+          setUser(userData)
+          return userData
+        }
+      } catch (err) {
+        if (err.response?.status === 401) {
+          throw new Error(err.response.data.error || 'Invalid OTP')
+        }
+      }
+    }
+    throw new Error('OTP verification failed')
   }
 
   const logout = () => {
     setToken(null)
     setUser(null)
-    setUserKey(null)
-    localStorage.removeItem('ehr_hospital_token')
-    localStorage.removeItem('ehr_hospital_user')
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, userKey, api, login, logout }}>
+    <AuthContext.Provider value={{ user, token, api, loginStep1, loginStep2, logout }}>
       {children}
     </AuthContext.Provider>
   )

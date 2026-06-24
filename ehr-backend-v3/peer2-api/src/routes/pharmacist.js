@@ -8,9 +8,12 @@ const { wrap, parseResult } = require('../middleware/errorHandler');
 const { fetchByCID, pinJSON } = require('../fabric/ipfsClient');
 const logger = require('../config/logger');
 
-const { getOrCreateActorKeys, logSignatureLocally, signDocument } = require('../utils/cryptoUtils');
+const { signDocument, logSignatureLocally } = require('../utils/cryptoUtils');
+const { verifyPin } = require('./auth');
+const { getPublicKey } = require('../../../shared/keyVault');
 
-const asPharmacist = [authenticate, requireRole('pharmacist'), peerContext];
+const asPharmacist       = [authenticate, requireRole('pharmacist'), peerContext];
+const asPharmacistSigned = [authenticate, requireRole('pharmacist'), peerContext, verifyPin];
 
 // ── GET /pharmacist/visits — finalized visits ready to dispense
 const DISPENSE_STATUSES = ['VISIT_FINALIZED', 'RECORD_FINALIZED', 'CLAIM_SUBMITTED',
@@ -38,7 +41,7 @@ router.get('/visits/:id/prescription', ...asPharmacist, wrap(async (req, res) =>
 
 // ── PUT /pharmacist/visits/:id/dispense — DispenseMedication ─
 router.put('/visits/:id/dispense',
-  ...asPharmacist,
+  ...asPharmacistSigned,
   [
     param('id').trim().notEmpty(),
     body('medicationDetails').trim().notEmpty().withMessage('medicationDetails required'),
@@ -65,15 +68,16 @@ router.put('/visits/:id/dispense',
     // ==========================================
     // THE CRYPTOGRAPHIC BLOCK
     // ==========================================
-    const actorKeys = getOrCreateActorKeys(req.user.userId);
-    const digitalSignature = signDocument(actorKeys.privateKey, clinical); 
+    const privateKey = req.actorPrivateKey;
+    const publicKey  = await getPublicKey(req.user.userId);
+    const digitalSignature = signDocument(privateKey, clinical);
     logSignatureLocally(req.user.userId, visitId, digitalSignature);
-    
+
     clinical.securityProof = {
-        signature: digitalSignature,
-        signerPublicKey: actorKeys.publicKey,
-        signedByUserId: req.user.userId,
-        timestamp: new Date().toISOString()
+        signature:       digitalSignature,
+        signerPublicKey: publicKey,
+        signedByUserId:  req.user.userId,
+        timestamp:       new Date().toISOString()
     };
     // ==========================================
 

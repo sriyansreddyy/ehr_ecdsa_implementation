@@ -1,17 +1,41 @@
 'use strict';
 
+/**
+ * auth.routes.js  (shared — symlink or copy into each peer's src/routes/auth.js)
+ * -------------------------------------------------------------------------------
+ * New login flow:
+ *
+ *   Step 1:  POST /auth/login        → verify password → send OTP to email
+ *                                      returns { otpSent: true } (no token yet)
+ *   Step 2:  POST /auth/verify-otp   → verify OTP → issue JWT
+ *                                      returns { token, user }
+ *
+ * Signing flow (called from within each action route):
+ *
+ *   Middleware verifyPin is exported for use in doctor/nurse/etc. routes.
+ *   Each signing route adds X-Actor-PIN header; middleware fetches + decrypts
+ *   the key and attaches it to req.actorPrivateKey for that request only.
+ *
+ * Admin:
+ *   POST /auth/enroll-key  → generate keypair for an actor, encrypt with PIN,
+ *                            store in Supabase. Called once per actor at setup.
+ */
+
 const router = require('express').Router();
 const jwt    = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
-const logger = require('../config/logger');
-const { authenticate } = require('../middleware/auth');
-
-const fs   = require('fs');
-const path = require('path');
+const fs     = require('fs');
+const path   = require('path');
 const { execFile } = require('child_process');
 
-const USERS_FILE   = path.join(__dirname, '../../../shared/users.json');
+const logger        = require('../config/logger');
+const { authenticate } = require('../middleware/auth');
+const { generateOtp, verifyOtp, hasPendingOtp } = require('../../../shared/otpStore');
+const { sendOtpEmail }    = require('../../../shared/mailer');
+const { enrollActorKey, fetchAndDecryptKey, actorKeyExists } = require('../../../shared/keyVault');
+
+const USERS_FILE    = path.join(__dirname, '../../../shared/users.json');
 const ENROLL_SCRIPT = path.resolve(__dirname, '../../../../ehr-network/scripts/enrollregisteruser.sh');
 
 function getUsers() {
@@ -31,6 +55,8 @@ function issueToken(userId, role, mspId, peer) {
   );
 }
 
+// ── Step 1: Password check → send OTP ────────────────────────────────────────
+
 router.post('/login',
   [body('username').trim().notEmpty(), body('password').notEmpty()],
   async (req, res) => {
@@ -39,21 +65,89 @@ router.post('/login',
 
     const { username, password } = req.body;
     const USERS = getUsers();
-    const user = USERS[username];
+    const user  = USERS[username];
+
+    // Verify password (same as before)
     if (!user || !(await bcrypt.compare(password, user.password))) {
-      logger.warn('Login failed', { username });
+      logger.warn('Login step 1 failed — bad credentials', { username });
       return res.status(401).json({ success: false, error: 'Invalid credentials' });
     }
 
-    const token = issueToken(username, user.role, user.mspId, user.peer);
-    logger.info('Login OK', { username, role: user.role });
+    // Actor must have an email registered
+    if (!user.email) {
+      logger.error('Actor has no email registered', { username });
+      return res.status(500).json({ success: false, error: 'No email on file for this account. Contact your administrator.' });
+    }
+
+    // Throttle: don't send another OTP if one is still valid
+    if (hasPendingOtp(username)) {
+      return res.status(429).json({
+        success: false,
+        error:   'An OTP was already sent. Please wait for it to expire (5 min) before requesting another.',
+      });
+    }
+
+    // Generate OTP and email it
+    const otp = generateOtp(username);
+    try {
+      await sendOtpEmail(user.email, username, otp);
+      logger.info('OTP sent', { username, email: user.email });
+    } catch (err) {
+      logger.error('Failed to send OTP email', { username, error: err.message });
+      return res.status(500).json({ success: false, error: 'Failed to send OTP. Try again.' });
+    }
+
+    // Tell the frontend to show the OTP entry screen.
+    // We deliberately do NOT issue a JWT yet.
     return res.json({
       success: true,
-      data: { token, expiresIn: process.env.JWT_EXPIRES_IN || '8h',
-              user: { username, role: user.role, mspId: user.mspId || 'HospitalMSP', peer: user.peer || 'peer0' } },
+      data: {
+        otpSent:  true,
+        maskedEmail: user.email.replace(/(?<=.{2}).(?=[^@]*@)/g, '*'),
+      },
     });
   }
 );
+
+// ── Step 2: OTP verification → issue JWT ─────────────────────────────────────
+
+router.post('/verify-otp',
+  [
+    body('username').trim().notEmpty(),
+    body('otp').trim().isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
+
+    const { username, otp } = req.body;
+    const result = verifyOtp(username, otp);
+
+    if (!result.ok) {
+      logger.warn('OTP verification failed', { username, reason: result.reason });
+      return res.status(401).json({ success: false, error: result.reason });
+    }
+
+    // OTP passed — now issue the JWT
+    const USERS = getUsers();
+    const user  = USERS[username];
+    if (!user) return res.status(401).json({ success: false, error: 'User not found' });
+
+    const token = issueToken(username, user.role, user.mspId, user.peer);
+    logger.info('Login complete (OTP verified)', { username, role: user.role });
+
+    return res.json({
+      success: true,
+      data: {
+        token,
+        expiresIn: process.env.JWT_EXPIRES_IN || '8h',
+        user: { username, role: user.role, mspId: user.mspId || 'HospitalMSP', peer: user.peer || 'peer0' },
+      },
+    });
+  }
+);
+
+// ── GET /auth/me  (unchanged) ─────────────────────────────────────────────────
 
 router.get('/me', authenticate, (req, res) => {
   const { userId, role, mspId, peer, iat, exp } = req.user;
@@ -64,89 +158,171 @@ router.get('/me', authenticate, (req, res) => {
   }});
 });
 
-// ── Public: List Clinical Staff (for Patients) ──────────────
+// ── GET /auth/staff  (unchanged) ──────────────────────────────────────────────
+
 router.get('/staff', (req, res) => {
   const USERS = getUsers();
   const staff = Object.keys(USERS)
-    .filter(username => ['doctor', 'nurse', 'pharmacist', 'medrecordofficer'].includes(USERS[username].role))
-    .map(username => ({
-      username,
-      role: USERS[username].role
-    }));
+    .filter(u => ['doctor', 'nurse', 'pharmacist', 'medrecordofficer'].includes(USERS[u].role))
+    .map(u => ({ username: u, role: USERS[u].role }));
   return res.json({ success: true, data: staff });
 });
 
-// ── Admin: Manage Users ──────────────────────────────────────
+// ── GET /auth/users  (unchanged) ──────────────────────────────────────────────
+
 router.get('/users', authenticate, (req, res) => {
   const USERS = getUsers();
-  const safeUsers = Object.keys(USERS).reduce((acc, key) => {
+  const safe  = Object.keys(USERS).reduce((acc, key) => {
     const { password, ...rest } = USERS[key];
     acc[key] = { username: key, ...rest };
     return acc;
   }, {});
-  return res.json({ success: true, data: Object.values(safeUsers) });
+  return res.json({ success: true, data: Object.values(safe) });
 });
 
-router.post('/users', authenticate, [
+// ── POST /auth/users  (extended: now requires email + pin) ────────────────────
+
+router.post('/users', authenticate,
+  [
     body('username').trim().notEmpty(),
     body('password').notEmpty(),
-    body('role').notEmpty()
-  ], async (req, res) => {
-  if (req.user.role !== 'admin') return res.status(403).json({ success: false, error: 'Only admins can create users' });
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
+    body('role').notEmpty(),
+    body('email').isEmail().withMessage('Valid email required'),
+    body('pin').isLength({ min: 4, max: 8 }).withMessage('PIN must be 4–8 digits'),
+  ],
+  async (req, res) => {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Only admins can create users' });
+    }
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
 
-  const { username, password, role } = req.body;
-  const USERS = getUsers();
-  if (USERS[username]) return res.status(400).json({ success: false, error: 'User already exists' });
+    const { username, password, role, email, pin } = req.body;
+    const USERS = getUsers();
+    if (USERS[username]) return res.status(400).json({ success: false, error: 'User already exists' });
 
-  // Determine peer mapping depending on hospital role
-  let peer = 'peer0';
-  if (['doctor'].includes(role)) peer = 'peer1';
-  if (['nurse', 'pharmacist', 'medrecordofficer'].includes(role)) peer = 'peer2';
+    let peer = 'peer0';
+    if (['doctor'].includes(role)) peer = 'peer1';
+    if (['nurse', 'pharmacist', 'medrecordofficer'].includes(role)) peer = 'peer2';
 
-  const hash = await bcrypt.hash(password, 10);
-  USERS[username] = { password: hash, role, mspId: 'HospitalMSP', peer };
+    const hash = await bcrypt.hash(password, 10);
+    USERS[username] = { password: hash, role, mspId: 'HospitalMSP', peer, email };
 
-  try {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(USERS, null, 2));
-    logger.info('Created new user in users.json', { username, role });
-  } catch (err) {
-    logger.error('Failed to save user to users.json', err);
-    return res.status(500).json({ success: false, error: 'Internal server error' });
-  }
-
-  // Enroll the user's Fabric CA identity so their MSP directory is created
-  const scriptArgs = [
-    '--org', 'hospital',
-    '--username', username,
-    '--password', password,
-    '--type', 'client',
-    '--role', role
-  ];
-
-  execFile('bash', [ENROLL_SCRIPT, ...scriptArgs], { timeout: 30000 }, (err, stdout, stderr) => {
-    if (err) {
-      // Rollback: remove user from users.json so both stores stay consistent
-      try {
-        const current = getUsers();
-        delete current[username];
-        fs.writeFileSync(USERS_FILE, JSON.stringify(current, null, 2));
-        logger.warn('Rolled back users.json after enrollment failure', { username });
-      } catch (rollbackErr) {
-        logger.error('Rollback failed — users.json may be inconsistent', { username, rollbackErr: rollbackErr.message });
-      }
-      logger.error('Fabric CA enrollment failed', { username, error: err.message, stderr });
-      return res.status(500).json({
-        success: false,
-        error: 'Fabric CA enrollment failed. User not created. Details: ' + (stderr || err.message).split('\n')[0],
-      });
+    try {
+      fs.writeFileSync(USERS_FILE, JSON.stringify(USERS, null, 2));
+      logger.info('Created new user in users.json', { username, role, email });
+    } catch (err) {
+      logger.error('Failed to save user to users.json', err);
+      return res.status(500).json({ success: false, error: 'Internal server error' });
     }
 
-    logger.info('Fabric identity enrolled successfully', { username, role });
-    return res.status(201).json({ success: true, data: { username, role, mspId: 'HospitalMSP', peer } });
-  });
-});
+    // Enroll ECDSA keypair into Supabase vault
+    try {
+      await enrollActorKey(username, pin);
+      logger.info('ECDSA key enrolled in vault', { username });
+    } catch (err) {
+      // Roll back users.json
+      try {
+        delete USERS[username];
+        fs.writeFileSync(USERS_FILE, JSON.stringify(USERS, null, 2));
+      } catch {}
+      logger.error('Key vault enrollment failed', { username, error: err.message });
+      return res.status(500).json({ success: false, error: 'Key vault enrollment failed: ' + err.message });
+    }
+
+    // Enroll Fabric CA identity
+    const scriptArgs = [
+      '--org', 'hospital', '--username', username,
+      '--password', password, '--type', 'client', '--role', role,
+    ];
+
+    execFile('bash', [ENROLL_SCRIPT, ...scriptArgs], { timeout: 30000 }, (err, stdout, stderr) => {
+      if (err) {
+        try {
+          delete USERS[username];
+          fs.writeFileSync(USERS_FILE, JSON.stringify(USERS, null, 2));
+        } catch {}
+        logger.error('Fabric CA enrollment failed', { username, error: err.message, stderr });
+        return res.status(500).json({
+          success: false,
+          error: 'Fabric CA enrollment failed: ' + (stderr || err.message).split('\n')[0],
+        });
+      }
+      logger.info('Fabric identity enrolled', { username, role });
+      return res.status(201).json({
+        success: true,
+        data: { username, role, mspId: 'HospitalMSP', peer, email },
+      });
+    });
+  }
+);
+
+// ── POST /auth/enroll-key  (admin tool: enroll key for existing user) ─────────
+// Use this if you need to onboard an existing user into the new vault system.
+
+router.post('/enroll-key', authenticate,
+  [
+    body('targetUser').trim().notEmpty(),
+    body('pin').isLength({ min: 4, max: 8 }).withMessage('PIN must be 4–8 digits'),
+  ],
+  async (req, res) => {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Admins only' });
+    }
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
+
+    const { targetUser, pin } = req.body;
+
+    const already = await actorKeyExists(targetUser);
+    if (already) {
+      return res.status(409).json({ success: false, error: `'${targetUser}' already has a key enrolled` });
+    }
+
+    try {
+      const { publicKey } = await enrollActorKey(targetUser, pin);
+      logger.info('Admin enrolled key for existing user', { targetUser, by: req.user.userId });
+      return res.status(201).json({ success: true, data: { actorId: targetUser, publicKey } });
+    } catch (err) {
+      logger.error('enroll-key failed', { targetUser, error: err.message });
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// ── Exported middleware: verifyPin ────────────────────────────────────────────
+//
+// Drop this into any route that triggers ECDSA signing:
+//
+//   const { verifyPin } = require('./auth');
+//   router.put('/visits/:id/diagnosis', ...asDoctor, verifyPin, wrap(async (req, res) => {
+//     const privateKey = req.actorPrivateKey;   // ← use here, then forget
+//     ...
+//   }));
+//
+// The frontend sends the PIN in the X-Actor-PIN header (HTTPS only).
+// The decrypted key lives only in req.actorPrivateKey for this one request.
+
+async function verifyPin(req, res, next) {
+  const pin = req.headers['x-actor-pin'];
+  if (!pin) {
+    return res.status(401).json({ success: false, error: 'X-Actor-Pin header required for signing operations' });
+  }
+
+  const actorId = req.user?.userId;
+  if (!actorId) {
+    return res.status(401).json({ success: false, error: 'Not authenticated' });
+  }
+
+  try {
+    req.actorPrivateKey = await fetchAndDecryptKey(actorId, pin);
+    next();
+  } catch (err) {
+    logger.warn('PIN verification failed', { actorId, error: err.message });
+    // Don't reveal whether the actor exists or not
+    return res.status(401).json({ success: false, error: 'Invalid PIN' });
+  }
+}
 
 module.exports = router;
-
+module.exports.verifyPin = verifyPin;
