@@ -22,9 +22,6 @@ router.get('/', ...canManage, wrap(async (req, res) => {
 }));
 
 // ── POST /patients — RegisterPatient + InitEHR ────────────────
-// 1. Register patient on blockchain
-// 2. Pin empty EHR JSON to IPFS via ipfs-service
-// 3. Call EhrContract:InitEHR to store the CID on-chain
 router.post('/',
   authenticate, requireRole('receptionist', 'admin'), verifyPin,
   [
@@ -43,15 +40,17 @@ router.post('/',
     const { patientId, name, age, gender, bloodGroup, contact, address } = req.body;
     logger.info('RegisterPatient', { patientId, userId: req.user.userId });
 
-    // Step 1 — pin empty EHR to IPFS first (so we have the CID ready)
     const demographics = { name, age, gender, bloodGroup, contact, address };
 
-    // req.user.username comes directly from the JWT Auth Token
-    const privateKey = req.actorPrivateKey;
-    const publicKey  = await getPublicKey(req.user.userId);
+    // Format key for crypto library
+    let rawKey = req.actorPrivateKey;
+    if (!rawKey.includes('-----BEGIN')) {
+        rawKey = `-----BEGIN EC PRIVATE KEY-----\n${rawKey}\n-----END EC PRIVATE KEY-----`;
+    }
 
-    const digitalSignature = signDocument(privateKey, demographics);
-    logSignatureLocally(req.user.userId, demographics.patientId, digitalSignature);
+    const publicKey  = await getPublicKey(req.user.userId);
+    const digitalSignature = signDocument(rawKey, demographics);
+    logSignatureLocally(req.user.userId, patientId, digitalSignature);
 
     const isAuthentic = verifyDocument(publicKey, digitalSignature, demographics);
 
@@ -68,19 +67,19 @@ router.post('/',
         signedByUserId:  req.user.userId
     };
 
-    return res.status(200).json({ success: true, message: "Local Test: ECDSA working", proof: demographics.securityProof });
-
+    // --- SUBMISSION FLOW ---
+    // 1. Initialize empty EHR in IPFS
     const { cid: ehrCID } = await initEHR(patientId, demographics);
     logger.info('EHR initialised in IPFS', { patientId, ehrCID });
 
-    // Step 2 — register patient on blockchain (pass ehrCID as 9th arg)
+    // 2. Register patient on blockchain
     const result = await req.contract.submitTransaction(
       'PatientContract:RegisterPatient',
       patientId, name, String(age), gender, bloodGroup, contact, address, ehrCID
     );
     const patient = parseResult(result);
 
-    // Step 3 — store CID in EhrContract (creates the on-chain EHR index)
+    // 3. Store CID in EhrContract
     await req.contract.submitTransaction(
       'EhrContract:InitEHR', patientId, ehrCID
     );

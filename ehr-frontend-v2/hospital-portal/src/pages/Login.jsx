@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { ShieldCheck, Eye, EyeOff, ChevronDown, Mail, KeyRound, ArrowLeft, Send, Copy, CheckCircle } from 'lucide-react'
+import { matchesKey, setUserKey } from '../utils/keyAuth'
+
 
 const ROLES = [
   { value: 'receptionist',     label: 'Receptionist'     },
@@ -34,12 +36,10 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const { loginSuccess, logout } = useAuth()
 
-  // 1) Prevent auto-login: Ensure hitting the login page immediately destroys stale sessions
   useEffect(() => {
     logout()
   }, [])
 
-  // 'credentials' | 'email' | 'otp' | 'key'
   const [step, setStep]         = useState('credentials')
   const [role, setRole]         = useState('receptionist')
   const [username, setUsername] = useState('receptionist')
@@ -49,7 +49,6 @@ export default function LoginPage() {
   const [otp, setOtp]           = useState('')
   const [maskedEmail, setMaskedEmail] = useState('')
   
-  // State for the new Step 4 (Key Gate)
   const [fetchedKey, setFetchedKey] = useState('')
   const [keyInput, setKeyInput]     = useState('')
   const [copied, setCopied]         = useState(false)
@@ -62,7 +61,7 @@ export default function LoginPage() {
     const PORT_MAP = {
       receptionist: 3001, admin: 3001, doctor: 3002, nurse: 3003, pharmacist: 3003, medrecordofficer: 3003
     }
-    return `http://localhost:${PORT_MAP[selectedRole] || 3001}`
+    return `http://localhost:${PORT_MAP[selectedRole]}`
   }
 
   const handleRoleChange = (r) => {
@@ -72,7 +71,6 @@ export default function LoginPage() {
     setError('')
   }
 
-  // Step 1: Credentials
   const handleCredentialsSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -89,7 +87,6 @@ export default function LoginPage() {
     finally { setLoading(false) }
   }
 
-  // Step 2: Email
   const handleEmailSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -107,7 +104,6 @@ export default function LoginPage() {
     finally { setLoading(false) }
   }
 
-  // Step 3: Verify OTP (but do NOT log in yet)
   const handleOtpSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -120,7 +116,6 @@ export default function LoginPage() {
       const data = await res.json()
       if (!data.success) throw new Error(data.error || 'OTP verification failed')
 
-      // Hold the auth data and the key, then switch to step 4
       setTempAuth({ user: data.data.user, token: data.data.token })
       setFetchedKey(data.data.privateKey || '')
       setStep('key')
@@ -128,20 +123,25 @@ export default function LoginPage() {
     finally { setLoading(false) }
   }
 
-  // Step 4: Validate manual key copy/paste
   const handleKeySubmit = (e) => {
     e.preventDefault()
-    if (keyInput !== fetchedKey) {
+    
+    const normalizeKey = (k) => (k || '').replace(/\s+/g, '')
+    
+    if (normalizeKey(keyInput) !== normalizeKey(fetchedKey)) {
       setError('Key does not match. Please paste the exact key.')
       return
     }
 
-    // Now securely log the user in
-    localStorage.setItem('token', tempAuth.token)
+    // Securely log the user in using sessionStorage
+    sessionStorage.setItem('token', tempAuth.token)
     sessionStorage.setItem('actorPrivateKey', fetchedKey)
     
+    // THIS IS THE FIX: Store the key exactly where the dashboard expects it
+    setUserKey(tempAuth.user.username, fetchedKey) 
+    
     loginSuccess(tempAuth.user, tempAuth.token, fetchedKey)
-    navigate(ROLE_ROUTES[tempAuth.user.role] || '/patients')
+    navigate(ROLE_ROUTES[tempAuth.user.role] || '/patients') // Or '/overview' for the patient portal
   }
 
   return (
@@ -213,7 +213,6 @@ export default function LoginPage() {
             </form>
           )}
 
-          {/* ── STEP 4: Key Validation (Your Restored Mechanism) ── */}
           {step === 'key' && (
             <form onSubmit={handleKeySubmit} className="space-y-5">
               <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-4 flex gap-3 items-start">
@@ -232,7 +231,8 @@ export default function LoginPage() {
                     {copied ? 'Copied' : 'Copy'}
                   </button>
                 </div>
-                <textarea readOnly value={fetchedKey} className="w-full h-20 bg-slate-900/50 border border-white/5 text-slate-400 rounded-lg px-3 py-2 text-xs font-mono resize-none focus:outline-none" />
+                {/* Obfuscated key display so it doesn't show the raw .pem string */}
+                <input type="password" readOnly value="****************************************************************" className="w-full bg-slate-900/50 border border-white/5 text-slate-400 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none" />
               </div>
 
               <div className="space-y-1.5">
@@ -252,4 +252,4 @@ export default function LoginPage() {
       </div>
     </div>
   )
-} 
+}

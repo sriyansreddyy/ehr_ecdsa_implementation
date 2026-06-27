@@ -15,8 +15,20 @@ export function getApiBase(role) {
 
 export function createApiClient(token, role) {
   const base = getApiBase(role)
-  const client = axios.create({ baseURL: base })
+  
+  // Extract the session-bound private key for ECDSA signing
+  const privateKey = sessionStorage.getItem('actorPrivateKey')
+  
+  const client = axios.create({ 
+    baseURL: base,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-private-key': privateKey || ''
+    }
+  })
+  
   if (token) client.defaults.headers.common['Authorization'] = `Bearer ${token}`
+  
   return client
 }
 
