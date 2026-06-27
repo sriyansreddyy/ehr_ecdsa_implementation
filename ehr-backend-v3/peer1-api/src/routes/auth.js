@@ -142,7 +142,7 @@ router.post('/verify-otp',
   }
 );
 
-// ── GET /auth/me  (unchanged) ─────────────────────────────────────────────────
+// ── GET /auth/me ─────────────────────────────────────────────────────────────
 router.get('/me', authenticate, (req, res) => {
   const { userId, role, mspId, peer, iat, exp } = req.user;
   return res.json({ success: true, data: {
@@ -152,7 +152,7 @@ router.get('/me', authenticate, (req, res) => {
   }});
 });
 
-// ── GET /auth/staff  (unchanged) ──────────────────────────────────────────────
+// ── GET /auth/staff ──────────────────────────────────────────────────────────
 router.get('/staff', (req, res) => {
   const USERS = getUsers();
   const staff = Object.keys(USERS)
@@ -161,7 +161,7 @@ router.get('/staff', (req, res) => {
   return res.json({ success: true, data: staff });
 });
 
-// ── GET /auth/users  (unchanged) ──────────────────────────────────────────────
+// ── GET /auth/users ──────────────────────────────────────────────────────────
 router.get('/users', authenticate, (req, res) => {
   const USERS = getUsers();
   const safe  = Object.keys(USERS).reduce((acc, key) => {
@@ -172,7 +172,7 @@ router.get('/users', authenticate, (req, res) => {
   return res.json({ success: true, data: Object.values(safe) });
 });
 
-// ── POST /auth/users  (unchanged) ─────────────────────────────────────────────
+// ── POST /auth/users ─────────────────────────────────────────────────────────
 router.post('/users', authenticate,
   [
     body('username').trim().notEmpty(),
@@ -182,13 +182,101 @@ router.post('/users', authenticate,
     body('pin').isLength({ min: 4, max: 8 }).withMessage('PIN must be 4–8 digits'),
   ],
   async (req, res) => {
-    // ... (Keep existing implementation unchanged) ... 
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Only admins can create users' });
+    }
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
+
+    const { username, password, role, email, pin } = req.body;
+    const USERS = getUsers();
+    if (USERS[username]) return res.status(400).json({ success: false, error: 'User already exists' });
+
+    let peer = 'peer0';
+    if (['doctor'].includes(role)) peer = 'peer1';
+    if (['nurse', 'pharmacist', 'medrecordofficer'].includes(role)) peer = 'peer2';
+
+    const hash = await bcrypt.hash(password, 10);
+    USERS[username] = { password: hash, role, mspId: 'HospitalMSP', peer, email };
+
+    try {
+      fs.writeFileSync(USERS_FILE, JSON.stringify(USERS, null, 2));
+      logger.info('Created new user in users.json', { username, role, email });
+    } catch (err) {
+      logger.error('Failed to save user to users.json', err);
+      return res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+
+    // Enroll ECDSA keypair into Supabase vault
+    try {
+      await enrollActorKey(username, pin);
+      logger.info('ECDSA key enrolled in vault', { username });
+    } catch (err) {
+      // Roll back users.json
+      try {
+        delete USERS[username];
+        fs.writeFileSync(USERS_FILE, JSON.stringify(USERS, null, 2));
+      } catch {}
+      logger.error('Key vault enrollment failed', { username, error: err.message });
+      return res.status(500).json({ success: false, error: 'Key vault enrollment failed: ' + err.message });
+    }
+
+    // Enroll Fabric CA identity
+    const scriptArgs = [
+      '--org', 'hospital', '--username', username,
+      '--password', password, '--type', 'client', '--role', role,
+    ];
+
+    execFile('bash', [ENROLL_SCRIPT, ...scriptArgs], { timeout: 30000 }, (err, stdout, stderr) => {
+      if (err) {
+        try {
+          delete USERS[username];
+          fs.writeFileSync(USERS_FILE, JSON.stringify(USERS, null, 2));
+        } catch {}
+        logger.error('Fabric CA enrollment failed', { username, error: err.message, stderr });
+        return res.status(500).json({
+          success: false,
+          error: 'Fabric CA enrollment failed: ' + (stderr || err.message).split('\n')[0],
+        });
+      }
+      logger.info('Fabric identity enrolled', { username, role });
+      return res.status(201).json({
+        success: true,
+        data: { username, role, mspId: 'HospitalMSP', peer, email },
+      });
+    });
   }
 );
 
-// ── POST /auth/enroll-key (unchanged) ─────────────────────────────────────────
+// ── POST /auth/enroll-key  (admin tool: enroll key for existing user) ─────────
 router.post('/enroll-key', authenticate,
-  // ... (Keep existing implementation unchanged) ...
+  [
+    body('targetUser').trim().notEmpty(),
+    body('pin').isLength({ min: 4, max: 8 }).withMessage('PIN must be 4–8 digits'),
+  ],
+  async (req, res) => {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Admins only' });
+    }
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
+
+    const { targetUser, pin } = req.body;
+
+    const already = await actorKeyExists(targetUser);
+    if (already) {
+      return res.status(409).json({ success: false, error: `'${targetUser}' already has a key enrolled` });
+    }
+
+    try {
+      const { publicKey } = await enrollActorKey(targetUser, pin);
+      logger.info('Admin enrolled key for existing user', { targetUser, by: req.user.userId });
+      return res.status(201).json({ success: true, data: { actorId: targetUser, publicKey } });
+    } catch (err) {
+      logger.error('enroll-key failed', { targetUser, error: err.message });
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
 );
 
 // ── Exported middleware: verifyPin ────────────────────────────────────────────
@@ -196,14 +284,19 @@ router.post('/enroll-key', authenticate,
 // we use it directly instead of constantly fetching from the vault.
 
 async function verifyPin(req, res, next) {
-  // If the frontend injected the private key directly from session storage
-  const privKey = req.headers['x-private-key'];
-  if (privKey) {
-    req.actorPrivateKey = privKey;
+  // The frontend base64-encodes the PEM key to avoid HTTP header newline issues.
+  // Decode it here before use.
+  const encodedKey = req.headers['x-private-key'];
+  if (encodedKey) {
+    try {
+      req.actorPrivateKey = Buffer.from(encodedKey, 'base64').toString('utf8');
+    } catch {
+      return res.status(400).json({ success: false, error: 'Invalid x-private-key encoding' });
+    }
     return next();
   }
 
-  // Fallback (if they didn't do invisible pass, use PIN)
+  // Fallback: use PIN to fetch and decrypt key from vault
   const pin = req.headers['x-actor-pin'];
   if (!pin) {
     return res.status(401).json({ success: false, error: 'X-Private-Key or X-Actor-Pin header required for signing operations' });

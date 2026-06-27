@@ -15,20 +15,23 @@ export function getApiBase(role) {
 
 export function createApiClient(token, role) {
   const base = getApiBase(role)
-  
-  // Extract the session-bound private key for ECDSA signing
-  const privateKey = sessionStorage.getItem('actorPrivateKey')
-  
-  const client = axios.create({ 
+
+  // PEM keys contain newlines which are illegal in HTTP headers.
+  // Base64-encode the key so it is safe to transmit as a header value.
+  // The backend's verifyPin middleware decodes it before use.
+  const rawKey = sessionStorage.getItem('actorPrivateKey')
+  const encodedKey = rawKey ? btoa(rawKey) : ''
+
+  const client = axios.create({
     baseURL: base,
     headers: {
       'Content-Type': 'application/json',
-      'x-private-key': privateKey || ''
+      'x-private-key': encodedKey,
     }
   })
-  
+
   if (token) client.defaults.headers.common['Authorization'] = `Bearer ${token}`
-  
+
   return client
 }
 

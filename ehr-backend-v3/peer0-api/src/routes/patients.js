@@ -23,7 +23,7 @@ router.get('/', ...canManage, wrap(async (req, res) => {
 
 // ── POST /patients — RegisterPatient + InitEHR ────────────────
 router.post('/',
-  authenticate, requireRole('receptionist', 'admin'), verifyPin,
+  authenticate, requireRole('receptionist', 'admin'), peerContext, verifyPin,
   [
     body('patientId').trim().notEmpty(),
     body('name').trim().notEmpty(),
@@ -42,11 +42,8 @@ router.post('/',
 
     const demographics = { name, age, gender, bloodGroup, contact, address };
 
-    // Format key for crypto library
-    let rawKey = req.actorPrivateKey;
-    if (!rawKey.includes('-----BEGIN')) {
-        rawKey = `-----BEGIN EC PRIVATE KEY-----\n${rawKey}\n-----END EC PRIVATE KEY-----`;
-    }
+    // Private key is PKCS8 PEM from the vault — Node.js crypto accepts it directly.
+    const rawKey = req.actorPrivateKey;
 
     const publicKey  = await getPublicKey(req.user.userId);
     const digitalSignature = signDocument(rawKey, demographics);
