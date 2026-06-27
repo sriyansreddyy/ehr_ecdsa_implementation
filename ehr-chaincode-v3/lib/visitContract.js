@@ -320,14 +320,22 @@ class VisitContract extends Contract {
     getCallerIdentity(ctx);
     const iterator = await ctx.stub.getStateByRange(`${VISIT_PREFIX}:`, `${VISIT_PREFIX};`);
     const results = [];
+    
     while (true) {
       const res = await iterator.next();
-      if (res.done) break;
-      if (res.value?.value?.length > 0) {
+      
+      // FIX: Process the value FIRST before breaking
+      if (res.value && res.value.value && res.value.value.length > 0) {
         results.push(JSON.parse(res.value.value.toString('utf8')));
       }
+      
+      // THEN check if we are done
+      if (res.done) {
+        await iterator.close();
+        break;
+      }
     }
-    await iterator.close();
+    
     return JSON.stringify(results);
   }
 

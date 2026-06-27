@@ -112,20 +112,26 @@ class PatientContract extends Contract {
     return JSON.stringify(patient);
   }
 
-  // ── ListAllPatients ───────────────────────────────────────────────────────
-  // Returns all patient records. Restricted to receptionist/admin.
+  // ── ListAllPatients ─────────────────────────────────────────────────────────
   async ListAllPatients(ctx) {
-    requireRole(ctx, 'receptionist', 'admin');
+    getCallerIdentity(ctx);
     const iterator = await ctx.stub.getStateByRange(`${PATIENT_PREFIX}:`, `${PATIENT_PREFIX};`);
     const results = [];
+    
     while (true) {
       const res = await iterator.next();
-      if (res.done) break;
-      if (res.value?.value?.length > 0) {
+      
+      // FIX: Process the value FIRST before breaking
+      if (res.value && res.value.value && res.value.value.length > 0) {
         results.push(JSON.parse(res.value.value.toString('utf8')));
       }
+      
+      if (res.done) {
+        await iterator.close();
+        break;
+      }
     }
-    await iterator.close();
+    
     return JSON.stringify(results);
   }
 

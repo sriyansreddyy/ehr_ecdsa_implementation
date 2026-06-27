@@ -54,8 +54,8 @@ export default function VisitsPage() {
   const refresh = () => visit && selectVisit({ visitId: visit.visitId })
 
   const filtered = visits.filter(v =>
-    v.visitId.toLowerCase().includes(search.toLowerCase()) ||
-    v.patientId.toLowerCase().includes(search.toLowerCase())
+    (v?.visitId || '').toLowerCase().includes(search.toLowerCase()) ||
+    (v?.patientId || '').toLowerCase().includes(search.toLowerCase())
   )
 
   return (
@@ -116,15 +116,14 @@ export default function VisitsPage() {
 
       {detailLoading && <div className="flex justify-center py-6"><Spinner /></div>}
 
-      {visit && !detailLoading && (
-        <VisitDetail
-          visit={visit}
-          user={user}
-          onAction={setModal}
-          onAuthorize={requestKey}
-          onRefresh={refresh}
-        />
-      )}
+      {visit.claimId && (
+          <div className="grid grid-cols-3 gap-4 py-4 border-b border-slate-100">
+            <Detail label="Claim ID" value={visit.claimId} />
+            {/* FIX: Check if claimAmount exists before calling toLocaleString */}
+            <Detail label="Claim Amount" value={visit.claimAmount ? `₹${visit.claimAmount.toLocaleString()}` : '—'} />
+            <Detail label="Claim Status" value={visit.claimStatus || '—'} />
+          </div>
+        )}
 
       {modal === 'assign-doctor' && (
         <AssignModal title="Assign Doctor" field="doctorId" placeholder="doctor"
@@ -272,7 +271,8 @@ function AssignModal({ title, field, placeholder, onClose, onSubmit }) {
         const res = await fetch('http://localhost:3001/auth/users', { headers: { Authorization: `Bearer ${token}` } })
         const data = await res.json()
         const targetRole = title.toLowerCase().includes('doctor') ? 'doctor' : 'nurse'
-        const matches = data.data.filter(s => s.role === targetRole)
+        // FIX: Added (data?.data || []) to prevent .filter crash on undefined
+        const matches = (data?.data || []).filter(s => s?.role === targetRole)
         setStaff(matches)
         if (matches.length > 0 && placeholder === value) {
           setValue(matches[0].username)
