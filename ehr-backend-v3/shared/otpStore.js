@@ -51,6 +51,10 @@ function generateOtp(userId) {
   return otp;
 }
 
+function clearOtp(userId) {
+  store.delete(userId);
+}
+
 /**
  * verifyOtp(userId, candidateOtp)
  * --------------------------------
@@ -106,4 +110,4 @@ function hasPendingOtp(userId) {
   return true;
 }
 
-module.exports = { generateOtp, verifyOtp, hasPendingOtp };
+module.exports = { generateOtp, verifyOtp, hasPendingOtp, clearOtp };

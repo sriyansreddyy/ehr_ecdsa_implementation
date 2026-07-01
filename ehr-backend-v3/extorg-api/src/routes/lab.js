@@ -80,23 +80,12 @@ router.put('/visits/:id/request/:reqId/acknowledge',
     };
     // ==========================================
     
-    // ==========================================
-    // LOCAL BYPASS: STOP BEFORE IPFS
-    // ==========================================
-    return res.status(200).json({ 
-        success: true, 
-        message: "Local E2E Test: Crypto Engine Working", 
-        proof: clinical.securityProof 
-    });
-
-    /* COMMENTED OUT FOR LOCAL TESTING
     const newCID = await pinJSON(clinical, `visit-${visitId}-lab-ack.json`);
 
     const result = await req.contract.submitTransaction(
       'LabContract:AcknowledgeLabRequest', visitId, labRequestId, newCID
     );
     return res.json({ success: true, data: parseResult(result) });
-    */
   })
 );
 
@@ -150,23 +139,12 @@ router.put('/visits/:id/request/:reqId/submit',
     };
     // ==========================================
 
-    // ==========================================
-    // LOCAL BYPASS: STOP BEFORE IPFS
-    // ==========================================
-    return res.status(200).json({ 
-        success: true, 
-        message: "Local E2E Test: Crypto Engine Working", 
-        proof: clinical.securityProof 
-    });
-
-    /* COMMENTED OUT FOR LOCAL TESTING
     const newCID = await pinJSON(clinical, `visit-${visitId}-lab-results.json`);
 
     const result = await req.contract.submitTransaction(
       'LabContract:SubmitLabResult', visitId, labRequestId, newCID
     );
     return res.json({ success: true, data: parseResult(result) });
-    */
   })
 );
 
@@ -208,25 +186,14 @@ router.put('/visits/:id/request/:reqId/approve',
         signedByUserId:  req.user.userId,
         timestamp:       new Date().toISOString()
     };
-    // ==========================================
 
-    // ==========================================
-    // LOCAL BYPASS: STOP BEFORE IPFS
-    // ==========================================
-    return res.status(200).json({ 
-        success: true, 
-        message: "Local E2E Test: Crypto Engine Working", 
-        proof: clinical.securityProof 
-    });
-
-    /* COMMENTED OUT FOR LOCAL TESTING
-    const newCID = await pinJSON(clinical, `visit-${visitId}-lab-approved.json`);
+    const newCID = await pinJSON(clinical, `visit-${visitId}-lab-approve.json`);
 
     const result = await req.contract.submitTransaction(
       'LabContract:ApproveLabResult', visitId, labRequestId, newCID
     );
     return res.json({ success: true, data: parseResult(result) });
-    */
+
   })
 );
 
@@ -248,9 +215,6 @@ router.put('/visits/:id/request/:reqId/return',
     });
     clinical.updatedAt = new Date().toISOString();
 
-    // ==========================================
-    // THE CRYPTOGRAPHIC BLOCK
-    // ==========================================
     const privateKey = req.actorPrivateKey;
     const publicKey  = await getPublicKey(req.user.userId);
     const digitalSignature = signDocument(privateKey, clinical);
@@ -262,25 +226,13 @@ router.put('/visits/:id/request/:reqId/return',
         signedByUserId:  req.user.userId,
         timestamp:       new Date().toISOString()
     };
-    // ==========================================
 
-    // ==========================================
-    // LOCAL BYPASS: STOP BEFORE IPFS
-    // ==========================================
-    return res.status(200).json({ 
-        success: true, 
-        message: "Local E2E Test: Crypto Engine Working", 
-        proof: clinical.securityProof 
-    });
-
-    /* COMMENTED OUT FOR LOCAL TESTING
     const newCID = await pinJSON(clinical, `visit-${visitId}-lab-return.json`);
 
     const result = await req.contract.submitTransaction(
       'ForwardContract:LabResultsBackToDoctor', visitId, labRequestId, newCID
     );
     return res.json({ success: true, data: parseResult(result) });
-    */
   })
 );
 

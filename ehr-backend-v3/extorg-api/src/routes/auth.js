@@ -14,6 +14,20 @@ const { generateOtp, verifyOtp, hasPendingOtp } = require('../../../shared/otpSt
 const { sendOtpEmail }    = require('../../../shared/mailer');
 const { enrollActorKey, fetchAndDecryptKey, actorKeyExists } = require('../../../shared/keyVault');
 
+const DIAG_ROLES = ['labreceptionist', 'labtechnician', 'radiologist', 'labsupervisor', 'labadmin'];
+const PROVIDER_ROLES = ['billingofficer', 'claimsauditor', 'insuranceofficer', 'provideradmin'];
+const EXTORG_ROLES = [...DIAG_ROLES, ...PROVIDER_ROLES];
+
+function getRoleDefaults(role) {
+  if (DIAG_ROLES.includes(role)) {
+    return { mspId: 'DiagnosticsMSP', peer: 'peer0' };
+  }
+  if (PROVIDER_ROLES.includes(role)) {
+    return { mspId: 'ProviderMSP', peer: 'peer0' };
+  }
+  return { mspId: 'DiagnosticsMSP', peer: 'peer0' };
+}
+
 const USERS_FILE    = path.join(__dirname, '../../../shared/users.json');
 const ENROLL_SCRIPT = path.resolve(__dirname, '../../../../ehr-network/scripts/enrollregisteruser.sh');
 
@@ -27,14 +41,14 @@ function getUsers() {
 }
 
 function issueToken(userId, role, mspId, peer) {
+  const defaults = getRoleDefaults(role);
   return jwt.sign(
-    { userId, role, mspId: mspId || 'HospitalMSP', peer: peer || 'peer0' },
+    { userId, role, mspId: mspId || defaults.mspId, peer: peer || defaults.peer },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '8h' }
   );
 }
 
-// ── Step 1: Password check ────────────────────────────────────────
 
 router.post('/login',
   [body('username').trim().notEmpty(), body('password').notEmpty()],
@@ -46,7 +60,6 @@ router.post('/login',
     const USERS = getUsers();
     const user  = USERS[username];
 
-    // Verify password is correct before allowing them to request an OTP
     if (!user || !(await bcrypt.compare(password, user.password))) {
       logger.warn('Login step 1 failed — bad credentials', { username });
       return res.status(401).json({ success: false, error: 'Invalid credentials' });
@@ -56,7 +69,6 @@ router.post('/login',
   }
 );
 
-// ── Step 2: Input Email & Send OTP ────────────────────────────────────────
 
 router.post('/send-otp',
   [body('username').trim().notEmpty(), body('email').isEmail()],
@@ -66,7 +78,6 @@ router.post('/send-otp',
 
     const { username, email } = req.body;
 
-    // Throttle: don't send another OTP if one is still valid
     if (hasPendingOtp(username)) {
       return res.status(429).json({
         success: false,
@@ -74,12 +85,12 @@ router.post('/send-otp',
       });
     }
 
-    // Generate OTP and email it to the user-provided address
     const otp = generateOtp(username);
     try {
       await sendOtpEmail(email, username, otp);
       logger.info('OTP sent', { username, email });
     } catch (err) {
+      clearOtp(username);
       logger.error('Failed to send OTP email', { username, error: err.message });
       return res.status(500).json({ success: false, error: 'Failed to send OTP via Resend. Try again.' });
     }
@@ -94,7 +105,6 @@ router.post('/send-otp',
   }
 );
 
-// ── Step 3: OTP verification & Private Key Extraction ──────────────────────
 
 router.post('/verify-otp',
   [
@@ -118,7 +128,6 @@ router.post('/verify-otp',
     const user  = USERS[username];
     if (!user) return res.status(401).json({ success: false, error: 'User not found' });
 
-    // OTP passed — Decrypt private key from Supabase using password as PIN
     let privateKey = null;
     try {
       privateKey = await fetchAndDecryptKey(username, password);
@@ -134,15 +143,20 @@ router.post('/verify-otp',
       success: true,
       data: {
         token,
-        privateKey, // Returned to frontend to be saved invisibly
+        privateKey, 
         expiresIn: process.env.JWT_EXPIRES_IN || '8h',
-        user: { username, role: user.role, mspId: user.mspId || 'HospitalMSP', peer: user.peer || 'peer0' },
+        user: {
+          username,
+          role: user.role,
+          ...getRoleDefaults(user.role),
+          mspId: user.mspId || getRoleDefaults(user.role).mspId,
+          peer: user.peer || getRoleDefaults(user.role).peer,
+        },
       },
     });
   }
 );
 
-// ── GET /auth/me ─────────────────────────────────────────────────────────────
 router.get('/me', authenticate, (req, res) => {
   const { userId, role, mspId, peer, iat, exp } = req.user;
   return res.json({ success: true, data: {
@@ -152,16 +166,14 @@ router.get('/me', authenticate, (req, res) => {
   }});
 });
 
-// ── GET /auth/staff ──────────────────────────────────────────────────────────
 router.get('/staff', (req, res) => {
   const USERS = getUsers();
   const staff = Object.keys(USERS)
-    .filter(u => ['doctor', 'nurse', 'pharmacist', 'medrecordofficer'].includes(USERS[u].role))
+    .filter(u => EXTORG_ROLES.includes(USERS[u].role))
     .map(u => ({ username: u, role: USERS[u].role }));
   return res.json({ success: true, data: staff });
 });
 
-// ── GET /auth/users ──────────────────────────────────────────────────────────
 router.get('/users', authenticate, (req, res) => {
   const USERS = getUsers();
   const safe  = Object.keys(USERS).reduce((acc, key) => {
@@ -172,7 +184,6 @@ router.get('/users', authenticate, (req, res) => {
   return res.json({ success: true, data: Object.values(safe) });
 });
 
-// ── POST /auth/users ─────────────────────────────────────────────────────────
 router.post('/users', authenticate,
   [
     body('username').trim().notEmpty(),
@@ -189,15 +200,19 @@ router.post('/users', authenticate,
     if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
 
     const { username, password, role, email, pin } = req.body;
+    if (!EXTORG_ROLES.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        error: `Role must be one of: ${EXTORG_ROLES.join(', ')}`,
+      });
+    }
     const USERS = getUsers();
     if (USERS[username]) return res.status(400).json({ success: false, error: 'User already exists' });
 
-    let peer = 'peer0';
-    if (['doctor'].includes(role)) peer = 'peer1';
-    if (['nurse', 'pharmacist', 'medrecordofficer'].includes(role)) peer = 'peer2';
+    const { mspId, peer } = getRoleDefaults(role);
 
     const hash = await bcrypt.hash(password, 10);
-    USERS[username] = { password: hash, role, mspId: 'HospitalMSP', peer, email };
+    USERS[username] = { password: hash, role, mspId, peer, email };
 
     try {
       fs.writeFileSync(USERS_FILE, JSON.stringify(USERS, null, 2));
@@ -207,12 +222,10 @@ router.post('/users', authenticate,
       return res.status(500).json({ success: false, error: 'Internal server error' });
     }
 
-    // Enroll ECDSA keypair into Supabase vault
     try {
       await enrollActorKey(username, pin);
       logger.info('ECDSA key enrolled in vault', { username });
     } catch (err) {
-      // Roll back users.json
       try {
         delete USERS[username];
         fs.writeFileSync(USERS_FILE, JSON.stringify(USERS, null, 2));
@@ -221,7 +234,6 @@ router.post('/users', authenticate,
       return res.status(500).json({ success: false, error: 'Key vault enrollment failed: ' + err.message });
     }
 
-    // Enroll Fabric CA identity
     const scriptArgs = [
       '--org', 'hospital', '--username', username,
       '--password', password, '--type', 'client', '--role', role,
@@ -242,13 +254,12 @@ router.post('/users', authenticate,
       logger.info('Fabric identity enrolled', { username, role });
       return res.status(201).json({
         success: true,
-        data: { username, role, mspId: 'HospitalMSP', peer, email },
+        data: { username, role, mspId, peer, email },
       });
     });
   }
 );
 
-// ── POST /auth/enroll-key  (admin tool: enroll key for existing user) ─────────
 router.post('/enroll-key', authenticate,
   [
     body('targetUser').trim().notEmpty(),
@@ -279,13 +290,8 @@ router.post('/enroll-key', authenticate,
   }
 );
 
-// ── Exported middleware: verifyPin ────────────────────────────────────────────
-// Modified so that if the frontend passes the invisible private key via header,
-// we use it directly instead of constantly fetching from the vault.
 
 async function verifyPin(req, res, next) {
-  // The frontend base64-encodes the PEM key to avoid HTTP header newline issues.
-  // Decode it here before use.
   const encodedKey = req.headers['x-private-key'];
   if (encodedKey) {
     try {
@@ -296,7 +302,6 @@ async function verifyPin(req, res, next) {
     return next();
   }
 
-  // Fallback: use PIN to fetch and decrypt key from vault
   const pin = req.headers['x-actor-pin'];
   if (!pin) {
     return res.status(401).json({ success: false, error: 'X-Private-Key or X-Actor-Pin header required for signing operations' });

@@ -172,7 +172,6 @@ export default function PatientsPage() {
         </div>
       )}
 
-      {/* FIX: Added onSuccess prop to handle the automatic forwarding */}
       <RegisterModal 
         open={showRegModal} 
         onClose={() => { setShowRegModal(false); loadAll() }} 
@@ -206,7 +205,6 @@ function InfoTile({ icon: Icon, label, value, truncate }) {
   )
 }
 
-// FIX: Add onSuccess to props
 function RegisterModal({ open, onClose, onSuccess, api }) {
   const [form, setForm] = useState({
     patientId: '', name: '', age: '', gender: 'Male',
@@ -226,11 +224,10 @@ function RegisterModal({ open, onClose, onSuccess, api }) {
     try {
       await api().post('/patients', { ...form, age: parseInt(form.age) })
       setSuccess(`Patient ${form.patientId} registered successfully!`)
-      const pid = form.patientId // Capture it before clearing form
+      const pid = form.patientId 
       
       setForm({ patientId: '', name: '', age: '', gender: 'Male', bloodGroup: 'O+', contact: '', address: '' })
       
-      // FIX: Wait 1.5 seconds so the user can see the success message, then forward them
       setTimeout(() => {
         if(onSuccess) onSuccess(pid)
       }, 1500)
@@ -241,7 +238,6 @@ function RegisterModal({ open, onClose, onSuccess, api }) {
       setLoading(false)
     }
   }
-// ... rest of the modal remains the same
 
   return (
     <Modal open={open} onClose={onClose} title="Register New Patient" size="md">

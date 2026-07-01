@@ -19,6 +19,7 @@ router.get('/visits/:id',
   authenticate, requireRole(...PROVIDER_ROLES), peerContext,
   wrap(async (req, res) => {
     const onChain = parseResult(await req.contract.evaluateTransaction('VisitContract:GetVisit', req.params.id));
+    if (!onChain) return res.status(404).json({ success: false, error: 'Visit not found' });
     const clinical = onChain?.visitCID ? await fetchByCID(onChain.visitCID) : null;
     return res.json({ success: true, data: { ...onChain, clinical } });
   })
@@ -50,6 +51,7 @@ router.post('/visits/:id/submit',
     logger.info('SubmitClaim', { visitId, claimId, claimAmount, userId: req.user.userId });
 
     const onChain = parseResult(await req.contract.evaluateTransaction('VisitContract:GetVisit', visitId));
+    if (!onChain) return res.status(404).json({ success: false, error: 'Visit not found' });
     const clinical = await fetchByCID(onChain.visitCID);
     clinical.forwardingLog = clinical.forwardingLog || [];
     clinical.forwardingLog.push({
@@ -59,9 +61,6 @@ router.post('/visits/:id/submit',
     });
     clinical.updatedAt = new Date().toISOString();
 
-    // ==========================================
-    // THE CRYPTOGRAPHIC BLOCK
-    // ==========================================
     const privateKey = req.actorPrivateKey;
     const publicKey  = await getPublicKey(req.user.userId);
     const digitalSignature = signDocument(privateKey, clinical);
@@ -73,25 +72,14 @@ router.post('/visits/:id/submit',
         signedByUserId:  req.user.userId,
         timestamp:       new Date().toISOString()
     };
-    // ==========================================
 
-    // ==========================================
-    // LOCAL BYPASS: STOP BEFORE IPFS
-    // ==========================================
-    return res.status(200).json({ 
-        success: true, 
-        message: "Local E2E Test: Crypto Engine Working", 
-        proof: clinical.securityProof 
-    });
-
-    /* COMMENTED OUT FOR LOCAL TESTING
     const newCID = await pinJSON(clinical, `visit-${visitId}-claim.json`);
 
     const result = await req.contract.submitTransaction(
       'ClaimsContract:SubmitClaim', visitId, claimId, String(claimAmount), newCID
     );
-    return res.status(201).json({ success: true, data: parseResult(result) });
-    */
+    return res.json({ success: true, data: parseResult(result) });
+
   })
 );
 
@@ -110,6 +98,7 @@ router.put('/visits/:id/audit',
     logger.info('AuditClaim', { visitId, userId: req.user.userId });
 
     const onChain = parseResult(await req.contract.evaluateTransaction('VisitContract:GetVisit', visitId));
+    if (!onChain) return res.status(404).json({ success: false, error: 'Visit not found' });
     const clinical = await fetchByCID(onChain.visitCID);
     clinical.forwardingLog = clinical.forwardingLog || [];
     clinical.forwardingLog.push({
@@ -118,9 +107,6 @@ router.put('/visits/:id/audit',
     });
     clinical.updatedAt = new Date().toISOString();
     
-    // ==========================================
-    // THE CRYPTOGRAPHIC BLOCK
-    // ==========================================
     const privateKey = req.actorPrivateKey;
     const publicKey  = await getPublicKey(req.user.userId);
     const digitalSignature = signDocument(privateKey, clinical);
@@ -132,25 +118,14 @@ router.put('/visits/:id/audit',
         signedByUserId:  req.user.userId,
         timestamp:       new Date().toISOString()
     };
-    // ==========================================
 
-    // ==========================================
-    // LOCAL BYPASS: STOP BEFORE IPFS
-    // ==========================================
-    return res.status(200).json({ 
-        success: true, 
-        message: "Local E2E Test: Crypto Engine Working", 
-        proof: clinical.securityProof 
-    });
-
-    /* COMMENTED OUT FOR LOCAL TESTING
     const newCID = await pinJSON(clinical, `visit-${visitId}-audit.json`);
 
     const result = await req.contract.submitTransaction(
       'ClaimsContract:AuditClaim', visitId, req.body.auditNotes, newCID
     );
     return res.json({ success: true, data: parseResult(result) });
-    */
+
   })
 );
 
@@ -172,6 +147,7 @@ router.put('/visits/:id/process',
     logger.info('ProcessClaim', { visitId, decision, userId: req.user.userId });
 
     const onChain = parseResult(await req.contract.evaluateTransaction('VisitContract:GetVisit', visitId));
+    if (!onChain) return res.status(404).json({ success: false, error: 'Visit not found' });
     const clinical = await fetchByCID(onChain.visitCID);
     clinical.forwardingLog = clinical.forwardingLog || [];
     clinical.forwardingLog.push({
@@ -181,9 +157,6 @@ router.put('/visits/:id/process',
     });
     clinical.updatedAt = new Date().toISOString();
 
-    // ==========================================
-    // THE CRYPTOGRAPHIC BLOCK
-    // ==========================================
     const privateKey = req.actorPrivateKey;
     const publicKey  = await getPublicKey(req.user.userId);
     const digitalSignature = signDocument(privateKey, clinical);
@@ -195,25 +168,14 @@ router.put('/visits/:id/process',
         signedByUserId:  req.user.userId,
         timestamp:       new Date().toISOString()
     };
-    // ==========================================
-    
-    // ==========================================
-    // LOCAL BYPASS: STOP BEFORE IPFS
-    // ==========================================
-    return res.status(200).json({ 
-        success: true, 
-        message: "Local E2E Test: Crypto Engine Working", 
-        proof: clinical.securityProof 
-    });
 
-    /* COMMENTED OUT FOR LOCAL TESTING
     const newCID = await pinJSON(clinical, `visit-${visitId}-claim-${decision.toLowerCase()}.json`);
 
     const result = await req.contract.submitTransaction(
       'ClaimsContract:ProcessClaim', visitId, decision, reason, newCID
     );
     return res.json({ success: true, data: parseResult(result) });
-    */
+
   })
 );
 

@@ -81,23 +81,12 @@ router.put('/visits/:id/dispense',
     };
     // ==========================================
 
-    // ==========================================
-    // LOCAL BYPASS: STOP BEFORE IPFS
-    // ==========================================
-    return res.status(200).json({ 
-        success: true, 
-        message: "Local E2E Test: Crypto Engine Working", 
-        proof: clinical.securityProof 
-    });
-
-    /* COMMENTED OUT FOR LOCAL TESTING
     const newCID = await pinJSON(clinical, `visit-${visitId}-dispense.json`);
 
     const result = await req.contract.submitTransaction(
       'ClinicalContract:DispenseMedication', visitId, newCID
     );
     return res.json({ success: true, data: parseResult(result) });
-    */
   })
 );
 

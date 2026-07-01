@@ -1,0 +1,1035 @@
+{
+  "patients": {
+    "PAT-123": {
+      "patientId": "PAT-123",
+      "name": "ASDF",
+      "age": 20,
+      "gender": "Male",
+      "bloodGroup": "O+",
+      "contact": "7896541230",
+      "address": "earth",
+      "ehrCID": "mock-ehr-pat123",
+      "visitCount": 1,
+      "visitIds": [
+        "PAT-123-V1"
+      ],
+      "history": [
+        {
+          "action": "REGISTER_PATIENT",
+          "timestamp": "2026-07-01T10:41:28.000Z",
+          "ehrCID": "mock-ehr-pat123"
+        },
+        {
+          "action": "OPEN_VISIT",
+          "visitId": "PAT-123-V1",
+          "visitCID": "mock-visit-pat123-v1",
+          "timestamp": "2026-07-01T10:41:42.000Z"
+        }
+      ],
+      "createdAt": "2026-07-01T10:41:28.000Z",
+      "updatedAt": "2026-07-01T10:41:42.000Z"
+    },
+    "PAT-1011": {
+      "patientId": "PAT-1011",
+      "name": "Test",
+      "age": 10,
+      "gender": "Male",
+      "bloodGroup": "O+",
+      "contact": "8796512300",
+      "address": "earth",
+      "ehrCID": "mock-ehr-40a198f044da9869",
+      "visitCount": 2,
+      "visitIds": [
+        "PAT-1011-V1",
+        "PAT-1011-V2"
+      ],
+      "history": [
+        {
+          "action": "REGISTER_PATIENT",
+          "timestamp": "2026-07-01T07:35:17.948Z",
+          "ehrCID": "mock-ehr-40a198f044da9869"
+        },
+        {
+          "action": "INIT_EHR",
+          "ehrCID": "mock-ehr-40a198f044da9869",
+          "timestamp": "2026-07-01T07:35:17.950Z"
+        },
+        {
+          "action": "OPEN_VISIT",
+          "visitId": "PAT-1011-V1",
+          "visitCID": "mock-visit-5dd23de4fa02f931",
+          "timestamp": "2026-07-01T07:35:30.371Z"
+        },
+        {
+          "action": "OPEN_VISIT",
+          "visitId": "PAT-1011-V2",
+          "visitCID": "mock-visit-5dd23de4fa02f931",
+          "timestamp": "2026-07-01T07:35:30.375Z"
+        }
+      ],
+      "createdAt": "2026-07-01T07:35:17.948Z",
+      "updatedAt": "2026-07-01T07:35:30.375Z"
+    }
+  },
+  "visits": {
+    "PAT-123-V1": {
+      "visitId": "PAT-123-V1",
+      "patientId": "PAT-123",
+      "chiefComplaint": "",
+      "openedBy": "receptionist",
+      "status": "FINALIZED",
+      "assignedDoctor": "doctor",
+      "assignedNurse": "",
+      "diagnosis": "",
+      "prescription": null,
+      "vitals": null,
+      "careNotes": [],
+      "labRequests": [],
+      "claims": [],
+      "forwardingLog": [
+        {
+          "action": "VISIT_OPENED",
+          "from": "receptionist",
+          "fromRole": "receptionist",
+          "to": "doctor",
+          "toRole": "doctor",
+          "notes": "",
+          "timestamp": "2026-07-01T10:41:42.000Z"
+        },
+        {
+          "action": "FORWARD_TO_NURSE",
+          "from": "doctor",
+          "fromRole": "doctor",
+          "to": "",
+          "toRole": "nurse",
+          "notes": "",
+          "timestamp": "2026-07-01T05:28:48.951Z"
+        }
+      ],
+      "cidHistory": [
+        {
+          "cid": "mock-visit-pat123-v1",
+          "reason": "OPEN_VISIT",
+          "updatedBy": "receptionist",
+          "updatedAt": "2026-07-01T10:41:42.000Z"
+        },
+        {
+          "cid": "mock-json-2514868daf1ff3e9",
+          "reason": "FORWARD_TO_NURSE",
+          "updatedBy": "doctor",
+          "updatedAt": "2026-07-01T05:28:48.951Z"
+        },
+        {
+          "cid": "mock-json-b53dd94e409ce09d",
+          "reason": "FINALIZE_VISIT",
+          "updatedBy": "doctor",
+          "updatedAt": "2026-07-01T05:29:03.539Z"
+        }
+      ],
+      "history": [
+        {
+          "action": "OPEN_VISIT",
+          "timestamp": "2026-07-01T10:41:42.000Z",
+          "visitCID": "mock-visit-pat123-v1"
+        }
+      ],
+      "createdAt": "2026-07-01T10:41:42.000Z",
+      "updatedAt": "2026-07-01T05:29:03.539Z",
+      "visitCID": "mock-json-b53dd94e409ce09d"
+    },
+    "PAT-1011-V1": {
+      "visitId": "PAT-1011-V1",
+      "patientId": "PAT-1011",
+      "chiefComplaint": "cough",
+      "openedBy": "receptionist",
+      "status": "VISIT_FINALIZED",
+      "assignedDoctor": "doctor",
+      "assignedNurse": "",
+      "diagnosis": "",
+      "prescription": {
+        "medicationDetails": {},
+        "dispensed": true
+      },
+      "vitals": null,
+      "careNotes": [],
+      "labRequests": [],
+      "claims": [],
+      "forwardingLog": [
+        {
+          "action": "AUTO_FORWARD_TO_DOCTOR",
+          "from": "receptionist",
+          "fromRole": "receptionist",
+          "to": "doctor",
+          "toRole": "doctor",
+          "notes": "Mock auto-forward for dashboard visibility",
+          "timestamp": "2026-07-01T07:35:30.374Z"
+        },
+        {
+          "action": "FORWARD_TO_NURSE",
+          "from": "doctor",
+          "fromRole": "doctor",
+          "to": "",
+          "toRole": "nurse",
+          "notes": "",
+          "timestamp": "2026-07-01T07:37:41.968Z"
+        },
+        {
+          "action": "VISIT_FINALIZED",
+          "from": "doctor",
+          "fromRole": "doctor",
+          "to": "",
+          "toRole": "",
+          "notes": "",
+          "timestamp": "2026-07-01T07:38:49.926Z"
+        },
+        {
+          "action": "MEDICATION_DISPENSED",
+          "from": "pharmacist",
+          "fromRole": "pharmacist",
+          "to": "",
+          "toRole": "",
+          "notes": "",
+          "timestamp": "2026-07-01T07:39:55.265Z"
+        }
+      ],
+      "cidHistory": [
+        {
+          "cid": "mock-json-f9b92ffc247633e3",
+          "reason": "FORWARD_TO_NURSE",
+          "updatedBy": "doctor",
+          "updatedAt": "2026-07-01T07:37:41.969Z"
+        },
+        {
+          "cid": "mock-json-ce82781fcb6d0e43",
+          "reason": "FINALIZE_VISIT",
+          "updatedBy": "doctor",
+          "updatedAt": "2026-07-01T07:38:49.926Z"
+        },
+        {
+          "cid": "mock-json-bc34cbb1fb8da102",
+          "reason": "DISPENSE_MEDICATION",
+          "updatedBy": "pharmacist",
+          "updatedAt": "2026-07-01T07:39:55.266Z"
+        }
+      ],
+      "history": [
+        {
+          "action": "OPEN_VISIT",
+          "timestamp": "2026-07-01T07:35:30.371Z"
+        }
+      ],
+      "createdAt": "2026-07-01T07:35:30.371Z",
+      "updatedAt": "2026-07-01T07:39:55.266Z",
+      "visitCID": "mock-json-bc34cbb1fb8da102"
+    },
+    "PAT-1011-V2": {
+      "visitId": "PAT-1011-V2",
+      "patientId": "PAT-1011",
+      "chiefComplaint": "cough",
+      "openedBy": "receptionist",
+      "status": "OPEN",
+      "assignedDoctor": "doctor",
+      "assignedNurse": "",
+      "diagnosis": "",
+      "prescription": null,
+      "vitals": null,
+      "careNotes": [],
+      "labRequests": [],
+      "claims": [],
+      "forwardingLog": [
+        {
+          "action": "VISIT_OPENED",
+          "from": "receptionist",
+          "fromRole": "receptionist",
+          "to": "doctor",
+          "toRole": "doctor",
+          "notes": "",
+          "timestamp": "2026-07-01T07:35:30.375Z"
+        }
+      ],
+      "cidHistory": [
+        {
+          "cid": "mock-visit-5dd23de4fa02f931",
+          "reason": "OPEN_VISIT",
+          "updatedBy": "receptionist",
+          "updatedAt": "2026-07-01T07:35:30.375Z"
+        }
+      ],
+      "history": [
+        {
+          "action": "OPEN_VISIT",
+          "timestamp": "2026-07-01T07:35:30.375Z",
+          "visitCID": "mock-visit-5dd23de4fa02f931"
+        }
+      ],
+      "createdAt": "2026-07-01T07:35:30.375Z",
+      "updatedAt": "2026-07-01T07:35:30.375Z",
+      "visitCID": "mock-visit-5dd23de4fa02f931"
+    }
+  },
+  "ehrHistory": {
+    "PAT-123": [
+      {
+        "cid": "mock-ehr-pat123",
+        "reason": "INITIAL_EHR",
+        "updatedBy": "receptionist",
+        "updatedAt": "2026-07-01T10:41:28.000Z"
+      }
+    ],
+    "PAT-1011": [
+      {
+        "cid": "mock-ehr-40a198f044da9869",
+        "reason": "INITIAL_EHR",
+        "updatedBy": "PAT-1011",
+        "updatedAt": "2026-07-01T07:35:17.944Z"
+      },
+      {
+        "cid": "mock-ehr-40a198f044da9869",
+        "reason": "REGISTER_PATIENT",
+        "updatedBy": "receptionist",
+        "updatedAt": "2026-07-01T07:35:17.948Z"
+      },
+      {
+        "cid": "mock-ehr-40a198f044da9869",
+        "reason": "INIT_EHR",
+        "updatedBy": "receptionist",
+        "updatedAt": "2026-07-01T07:35:17.950Z"
+      }
+    ]
+  },
+  "ipfs": {
+    "mock-ehr-pat123": {
+      "patientId": "PAT-123",
+      "demographics": {
+        "name": "ASDF",
+        "age": 20,
+        "gender": "Male",
+        "bloodGroup": "O+",
+        "contact": "7896541230",
+        "address": "earth"
+      },
+      "medicalHistory": [],
+      "createdAt": "2026-07-01T10:41:28.000Z",
+      "updatedAt": "2026-07-01T10:41:28.000Z"
+    },
+    "mock-visit-pat123-v1": {
+      "visitId": "PAT-123-V1",
+      "patientId": "PAT-123",
+      "chiefComplaint": "",
+      "openedBy": "receptionist",
+      "status": "OPEN",
+      "assignedDoctor": "doctor",
+      "assignedNurse": "",
+      "diagnosis": "",
+      "prescription": null,
+      "vitals": null,
+      "careNotes": [],
+      "labRequests": [],
+      "claims": [],
+      "forwardingLog": [
+        {
+          "action": "VISIT_OPENED",
+          "from": "receptionist",
+          "fromRole": "receptionist",
+          "to": "doctor",
+          "toRole": "doctor",
+          "notes": "",
+          "timestamp": "2026-07-01T10:41:42.000Z"
+        }
+      ],
+      "cidHistory": [
+        {
+          "cid": "mock-visit-pat123-v1",
+          "reason": "OPEN_VISIT",
+          "updatedBy": "receptionist",
+          "updatedAt": "2026-07-01T10:41:42.000Z"
+        }
+      ],
+      "history": [
+        {
+          "action": "OPEN_VISIT",
+          "timestamp": "2026-07-01T10:41:42.000Z",
+          "visitCID": "mock-visit-pat123-v1"
+        }
+      ],
+      "createdAt": "2026-07-01T10:41:42.000Z",
+      "updatedAt": "2026-07-01T10:41:42.000Z",
+      "visitCID": "mock-visit-pat123-v1"
+    },
+    "mock-json-60159ab51e65088c": {
+      "visitId": "PAT-123-V1",
+      "patientId": "PAT-123",
+      "chiefComplaint": "",
+      "openedBy": "receptionist",
+      "status": "OPEN",
+      "assignedDoctor": "doctor",
+      "assignedNurse": "",
+      "diagnosis": "",
+      "prescription": null,
+      "vitals": null,
+      "careNotes": [],
+      "labRequests": [],
+      "claims": [],
+      "forwardingLog": [
+        {
+          "action": "VISIT_OPENED",
+          "from": "receptionist",
+          "fromRole": "receptionist",
+          "to": "doctor",
+          "toRole": "doctor",
+          "notes": "",
+          "timestamp": "2026-07-01T10:41:42.000Z"
+        },
+        {
+          "action": "DIAGNOSIS_NOTES_UPDATED",
+          "from": "doctor",
+          "fromRole": "doctor",
+          "to": "",
+          "toRole": "",
+          "notes": "fever",
+          "timestamp": "2026-07-01T05:28:10.012Z"
+        }
+      ],
+      "cidHistory": [
+        {
+          "cid": "mock-visit-pat123-v1",
+          "reason": "OPEN_VISIT",
+          "updatedBy": "receptionist",
+          "updatedAt": "2026-07-01T10:41:42.000Z"
+        }
+      ],
+      "history": [
+        {
+          "action": "OPEN_VISIT",
+          "timestamp": "2026-07-01T10:41:42.000Z",
+          "visitCID": "mock-visit-pat123-v1"
+        }
+      ],
+      "createdAt": "2026-07-01T10:41:42.000Z",
+      "updatedAt": "2026-07-01T05:28:10.012Z",
+      "visitCID": "mock-visit-pat123-v1",
+      "diagnosisNotes": "fever",
+      "securityProof": {
+        "signature": "304502200594477901efce6339c8b0ec66b169277ee1e6c3d6320e1ec95d022704203882022100ad6e747f0da64f6ea7d862cdd51a1110f3b4ac043c1c152dcee62b0857ab071f",
+        "signerPublicKey": "-----BEGIN PUBLIC KEY-----\r\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoo6RtPKCV9egoI79yreQNVCl4+4c\r\nFyN776PGxDDq7E3Vgnfpb8K1nss0ewfUs2/IPNSKpinj4HZ5JgYa449cMg==\r\n-----END PUBLIC KEY-----",
+        "signedByUserId": "doctor",
+        "timestamp": "2026-07-01T05:28:13.439Z"
+      }
+    },
+    "mock-json-d94f30e37a8e9dbf": {
+      "visitId": "PAT-123-V1",
+      "patientId": "PAT-123",
+      "chiefComplaint": "",
+      "openedBy": "receptionist",
+      "status": "OPEN",
+      "assignedDoctor": "doctor",
+      "assignedNurse": "",
+      "diagnosis": "",
+      "prescription": null,
+      "vitals": null,
+      "careNotes": [],
+      "labRequests": [],
+      "claims": [],
+      "forwardingLog": [
+        {
+          "action": "VISIT_OPENED",
+          "from": "receptionist",
+          "fromRole": "receptionist",
+          "to": "doctor",
+          "toRole": "doctor",
+          "notes": "",
+          "timestamp": "2026-07-01T10:41:42.000Z"
+        },
+        {
+          "action": "PRESCRIPTION_UPDATED",
+          "from": "doctor",
+          "fromRole": "doctor",
+          "to": "",
+          "toRole": "",
+          "notes": "v1: paracetamol",
+          "timestamp": "2026-07-01T05:28:34.902Z"
+        }
+      ],
+      "cidHistory": [
+        {
+          "cid": "mock-visit-pat123-v1",
+          "reason": "OPEN_VISIT",
+          "updatedBy": "receptionist",
+          "updatedAt": "2026-07-01T10:41:42.000Z"
+        }
+      ],
+      "history": [
+        {
+          "action": "OPEN_VISIT",
+          "timestamp": "2026-07-01T10:41:42.000Z",
+          "visitCID": "mock-visit-pat123-v1"
+        }
+      ],
+      "createdAt": "2026-07-01T10:41:42.000Z",
+      "updatedAt": "2026-07-01T05:28:34.902Z",
+      "visitCID": "mock-visit-pat123-v1",
+      "prescriptions": [
+        {
+          "version": 1,
+          "medications": [
+            "paracetamol"
+          ],
+          "instructions": "every 6h",
+          "prescribedBy": "doctor",
+          "prescribedAt": "2026-07-01T05:28:34.902Z"
+        }
+      ],
+      "securityProof": {
+        "signature": "304502201809710cea899ad448a784e2b52913eea9ed9fc7c9d11657e7828c283177a792022100959660da68608c907b9812dcc8bd7c80620c007b72ce94d231e8d10144e3d685",
+        "signerPublicKey": "-----BEGIN PUBLIC KEY-----\r\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoo6RtPKCV9egoI79yreQNVCl4+4c\r\nFyN776PGxDDq7E3Vgnfpb8K1nss0ewfUs2/IPNSKpinj4HZ5JgYa449cMg==\r\n-----END PUBLIC KEY-----",
+        "signedByUserId": "doctor",
+        "timestamp": "2026-07-01T05:28:38.190Z"
+      }
+    },
+    "mock-json-2514868daf1ff3e9": {
+      "visitId": "PAT-123-V1",
+      "patientId": "PAT-123",
+      "chiefComplaint": "",
+      "openedBy": "receptionist",
+      "status": "OPEN",
+      "assignedDoctor": "doctor",
+      "assignedNurse": "",
+      "diagnosis": "",
+      "prescription": null,
+      "vitals": null,
+      "careNotes": [],
+      "labRequests": [],
+      "claims": [],
+      "forwardingLog": [
+        {
+          "action": "VISIT_OPENED",
+          "from": "receptionist",
+          "fromRole": "receptionist",
+          "to": "doctor",
+          "toRole": "doctor",
+          "notes": "",
+          "timestamp": "2026-07-01T10:41:42.000Z"
+        },
+        {
+          "action": "FORWARD_TO_NURSE",
+          "from": "doctor",
+          "fromRole": "doctor",
+          "to": "",
+          "toRole": "nurse",
+          "notes": "",
+          "timestamp": "2026-07-01T05:28:45.818Z"
+        }
+      ],
+      "cidHistory": [
+        {
+          "cid": "mock-visit-pat123-v1",
+          "reason": "OPEN_VISIT",
+          "updatedBy": "receptionist",
+          "updatedAt": "2026-07-01T10:41:42.000Z"
+        }
+      ],
+      "history": [
+        {
+          "action": "OPEN_VISIT",
+          "timestamp": "2026-07-01T10:41:42.000Z",
+          "visitCID": "mock-visit-pat123-v1"
+        }
+      ],
+      "createdAt": "2026-07-01T10:41:42.000Z",
+      "updatedAt": "2026-07-01T05:28:45.818Z",
+      "visitCID": "mock-visit-pat123-v1",
+      "securityProof": {
+        "signature": "304402202349740f673d44032e187cc3cc88ae3a331c1f924b2904dd71625b79432edc6602201f67827e2daa384a96f7c4a6ca9bb678beb33519fbd99267d93623eece5c0a76",
+        "signerPublicKey": "-----BEGIN PUBLIC KEY-----\r\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoo6RtPKCV9egoI79yreQNVCl4+4c\r\nFyN776PGxDDq7E3Vgnfpb8K1nss0ewfUs2/IPNSKpinj4HZ5JgYa449cMg==\r\n-----END PUBLIC KEY-----",
+        "signedByUserId": "doctor",
+        "timestamp": "2026-07-01T05:28:48.942Z"
+      }
+    },
+    "mock-json-b53dd94e409ce09d": {
+      "visitId": "PAT-123-V1",
+      "patientId": "PAT-123",
+      "chiefComplaint": "",
+      "openedBy": "receptionist",
+      "status": "OPEN",
+      "assignedDoctor": "doctor",
+      "assignedNurse": "",
+      "diagnosis": "",
+      "prescription": null,
+      "vitals": null,
+      "careNotes": [],
+      "labRequests": [],
+      "claims": [],
+      "forwardingLog": [
+        {
+          "action": "VISIT_OPENED",
+          "from": "receptionist",
+          "fromRole": "receptionist",
+          "to": "doctor",
+          "toRole": "doctor",
+          "notes": "",
+          "timestamp": "2026-07-01T10:41:42.000Z"
+        },
+        {
+          "action": "FORWARD_TO_NURSE",
+          "from": "doctor",
+          "fromRole": "doctor",
+          "to": "",
+          "toRole": "nurse",
+          "notes": "",
+          "timestamp": "2026-07-01T05:28:45.818Z"
+        },
+        {
+          "action": "VISIT_FINALIZED",
+          "from": "doctor",
+          "fromRole": "doctor",
+          "to": "",
+          "toRole": "",
+          "notes": "fever",
+          "timestamp": "2026-07-01T05:29:00.231Z"
+        }
+      ],
+      "cidHistory": [
+        {
+          "cid": "mock-visit-pat123-v1",
+          "reason": "OPEN_VISIT",
+          "updatedBy": "receptionist",
+          "updatedAt": "2026-07-01T10:41:42.000Z"
+        }
+      ],
+      "history": [
+        {
+          "action": "OPEN_VISIT",
+          "timestamp": "2026-07-01T10:41:42.000Z",
+          "visitCID": "mock-visit-pat123-v1"
+        }
+      ],
+      "createdAt": "2026-07-01T10:41:42.000Z",
+      "updatedAt": "2026-07-01T05:29:00.231Z",
+      "visitCID": "mock-visit-pat123-v1",
+      "securityProof": {
+        "signature": "3045022046ff489159297b48ffc6942b27125e6aba7460ef07aa57d1b57159eb8116e19e022100828b4d96a813d0f6699ed4a535cd988da1ae093a3f611338941887b1b952ea83",
+        "signerPublicKey": "-----BEGIN PUBLIC KEY-----\r\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoo6RtPKCV9egoI79yreQNVCl4+4c\r\nFyN776PGxDDq7E3Vgnfpb8K1nss0ewfUs2/IPNSKpinj4HZ5JgYa449cMg==\r\n-----END PUBLIC KEY-----",
+        "signedByUserId": "doctor",
+        "timestamp": "2026-07-01T05:29:03.534Z"
+      },
+      "finalDiagnosis": "fever",
+      "finalizedBy": "doctor",
+      "finalizedAt": "2026-07-01T05:29:00.231Z"
+    },
+    "mock-ehr-40a198f044da9869": {
+      "patientId": "PAT-1011",
+      "demographics": {
+        "name": "Test",
+        "age": 10,
+        "gender": "Male",
+        "bloodGroup": "O+",
+        "contact": "8796512300",
+        "address": "earth",
+        "securityProof": {
+          "signature": "3045022100a9a53967a6b6a14ad1de6c9598b8708761b80236e9281ca19abded674a93fd7202206c8b955ef66ca4214ae0d3951af6bca451d75777451b9fb566c69cf89bd6efa2",
+          "signerPublicKey": "-----BEGIN PUBLIC KEY-----\r\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE0vO6wFhNYwPIg7aA8k4YZLHPUzjP\r\ntie/j3HgVsrbjHjP8YYiJxzJ9WMDVWC9pap2Ffs2zhTwSWA8MTRpEbTQ1A==\r\n-----END PUBLIC KEY-----",
+          "signedByUserId": "receptionist"
+        }
+      },
+      "medicalHistory": [],
+      "createdAt": "2026-07-01T07:35:17.944Z",
+      "updatedAt": "2026-07-01T07:35:17.944Z"
+    },
+    "mock-visit-5dd23de4fa02f931": {
+      "visitId": "PAT-1011-V2",
+      "patientId": "PAT-1011",
+      "chiefComplaint": "cough",
+      "openedBy": "receptionist",
+      "status": "OPEN",
+      "assignedDoctor": "doctor",
+      "assignedNurse": "",
+      "diagnosis": "",
+      "prescription": null,
+      "vitals": null,
+      "careNotes": [],
+      "labRequests": [],
+      "claims": [],
+      "forwardingLog": [
+        {
+          "action": "VISIT_OPENED",
+          "from": "receptionist",
+          "fromRole": "receptionist",
+          "to": "doctor",
+          "toRole": "doctor",
+          "notes": "",
+          "timestamp": "2026-07-01T07:35:30.375Z"
+        }
+      ],
+      "cidHistory": [
+        {
+          "cid": "mock-visit-5dd23de4fa02f931",
+          "reason": "OPEN_VISIT",
+          "updatedBy": "receptionist",
+          "updatedAt": "2026-07-01T07:35:30.375Z"
+        }
+      ],
+      "history": [
+        {
+          "action": "OPEN_VISIT",
+          "timestamp": "2026-07-01T07:35:30.375Z",
+          "visitCID": "mock-visit-5dd23de4fa02f931"
+        }
+      ],
+      "createdAt": "2026-07-01T07:35:30.375Z",
+      "updatedAt": "2026-07-01T07:35:30.375Z",
+      "visitCID": "mock-visit-5dd23de4fa02f931"
+    },
+    "mock-json-bbd9d08fbb6909bf": {
+      "visitId": "PAT-1011-V2",
+      "patientId": "PAT-1011",
+      "chiefComplaint": "cough",
+      "openedBy": "receptionist",
+      "status": "OPEN",
+      "assignedDoctor": "doctor",
+      "assignedNurse": "",
+      "diagnosis": "",
+      "prescription": null,
+      "vitals": null,
+      "careNotes": [],
+      "labRequests": [],
+      "claims": [],
+      "forwardingLog": [
+        {
+          "action": "VISIT_OPENED",
+          "from": "receptionist",
+          "fromRole": "receptionist",
+          "to": "doctor",
+          "toRole": "doctor",
+          "notes": "",
+          "timestamp": "2026-07-01T07:35:30.375Z"
+        },
+        {
+          "action": "DIAGNOSIS_NOTES_UPDATED",
+          "from": "doctor",
+          "fromRole": "doctor",
+          "to": "",
+          "toRole": "",
+          "notes": "cough cough",
+          "timestamp": "2026-07-01T07:37:19.588Z"
+        }
+      ],
+      "cidHistory": [
+        {
+          "cid": "mock-visit-5dd23de4fa02f931",
+          "reason": "OPEN_VISIT",
+          "updatedBy": "receptionist",
+          "updatedAt": "2026-07-01T07:35:30.375Z"
+        }
+      ],
+      "history": [
+        {
+          "action": "OPEN_VISIT",
+          "timestamp": "2026-07-01T07:35:30.375Z",
+          "visitCID": "mock-visit-5dd23de4fa02f931"
+        }
+      ],
+      "createdAt": "2026-07-01T07:35:30.375Z",
+      "updatedAt": "2026-07-01T07:37:19.588Z",
+      "visitCID": "mock-visit-5dd23de4fa02f931",
+      "diagnosisNotes": "cough cough",
+      "securityProof": {
+        "signature": "3045022100e82174b033dc042c45f3c629ca6f40c7afbe1f2569cb7b5e5ef47ba8206eadb302206401b7ea957647bb813c60b6fc45701eb0c97137208e6c682a29bae154e56170",
+        "signerPublicKey": "-----BEGIN PUBLIC KEY-----\r\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoo6RtPKCV9egoI79yreQNVCl4+4c\r\nFyN776PGxDDq7E3Vgnfpb8K1nss0ewfUs2/IPNSKpinj4HZ5JgYa449cMg==\r\n-----END PUBLIC KEY-----",
+        "signedByUserId": "doctor",
+        "timestamp": "2026-07-01T07:37:22.965Z"
+      }
+    },
+    "mock-json-f9b92ffc247633e3": {
+      "visitId": "PAT-1011-V2",
+      "patientId": "PAT-1011",
+      "chiefComplaint": "cough",
+      "openedBy": "receptionist",
+      "status": "OPEN",
+      "assignedDoctor": "doctor",
+      "assignedNurse": "",
+      "diagnosis": "",
+      "prescription": null,
+      "vitals": null,
+      "careNotes": [],
+      "labRequests": [],
+      "claims": [],
+      "forwardingLog": [
+        {
+          "action": "VISIT_OPENED",
+          "from": "receptionist",
+          "fromRole": "receptionist",
+          "to": "doctor",
+          "toRole": "doctor",
+          "notes": "",
+          "timestamp": "2026-07-01T07:35:30.375Z"
+        },
+        {
+          "action": "FORWARD_TO_NURSE",
+          "from": "doctor",
+          "fromRole": "doctor",
+          "to": "",
+          "toRole": "nurse",
+          "notes": "look ",
+          "timestamp": "2026-07-01T07:37:38.603Z"
+        }
+      ],
+      "cidHistory": [
+        {
+          "cid": "mock-visit-5dd23de4fa02f931",
+          "reason": "OPEN_VISIT",
+          "updatedBy": "receptionist",
+          "updatedAt": "2026-07-01T07:35:30.375Z"
+        }
+      ],
+      "history": [
+        {
+          "action": "OPEN_VISIT",
+          "timestamp": "2026-07-01T07:35:30.375Z",
+          "visitCID": "mock-visit-5dd23de4fa02f931"
+        }
+      ],
+      "createdAt": "2026-07-01T07:35:30.375Z",
+      "updatedAt": "2026-07-01T07:37:38.603Z",
+      "visitCID": "mock-visit-5dd23de4fa02f931",
+      "securityProof": {
+        "signature": "3046022100e5ceb263f9107d2fa112b9f7e50661b4b8ccfcdfe13aaa353282a0546787138302210084dff68f17681c3eb0608af2fe65e2d6835ce75b4095b1475f9e3c64fb158309",
+        "signerPublicKey": "-----BEGIN PUBLIC KEY-----\r\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoo6RtPKCV9egoI79yreQNVCl4+4c\r\nFyN776PGxDDq7E3Vgnfpb8K1nss0ewfUs2/IPNSKpinj4HZ5JgYa449cMg==\r\n-----END PUBLIC KEY-----",
+        "signedByUserId": "doctor",
+        "timestamp": "2026-07-01T07:37:41.964Z"
+      }
+    },
+    "mock-json-09e7e4d0828e705f": {
+      "visitId": "PAT-1011-V2",
+      "patientId": "PAT-1011",
+      "chiefComplaint": "cough",
+      "openedBy": "receptionist",
+      "status": "OPEN",
+      "assignedDoctor": "doctor",
+      "assignedNurse": "",
+      "diagnosis": "",
+      "prescription": null,
+      "vitals": null,
+      "careNotes": [],
+      "labRequests": [],
+      "claims": [],
+      "forwardingLog": [
+        {
+          "action": "VISIT_OPENED",
+          "from": "receptionist",
+          "fromRole": "receptionist",
+          "to": "doctor",
+          "toRole": "doctor",
+          "notes": "",
+          "timestamp": "2026-07-01T07:35:30.375Z"
+        },
+        {
+          "action": "FORWARD_TO_NURSE",
+          "from": "doctor",
+          "fromRole": "doctor",
+          "to": "",
+          "toRole": "nurse",
+          "notes": "look ",
+          "timestamp": "2026-07-01T07:37:38.603Z"
+        },
+        {
+          "action": "PRESCRIPTION_UPDATED",
+          "from": "doctor",
+          "fromRole": "doctor",
+          "to": "",
+          "toRole": "",
+          "notes": "v1: cough syrup",
+          "timestamp": "2026-07-01T07:38:03.845Z"
+        }
+      ],
+      "cidHistory": [
+        {
+          "cid": "mock-visit-5dd23de4fa02f931",
+          "reason": "OPEN_VISIT",
+          "updatedBy": "receptionist",
+          "updatedAt": "2026-07-01T07:35:30.375Z"
+        }
+      ],
+      "history": [
+        {
+          "action": "OPEN_VISIT",
+          "timestamp": "2026-07-01T07:35:30.375Z",
+          "visitCID": "mock-visit-5dd23de4fa02f931"
+        }
+      ],
+      "createdAt": "2026-07-01T07:35:30.375Z",
+      "updatedAt": "2026-07-01T07:38:03.845Z",
+      "visitCID": "mock-visit-5dd23de4fa02f931",
+      "securityProof": {
+        "signature": "3046022100c1e542a9b2634fddd9ff503ef2dc02bdd9c5e45ab354272d90dab6ceddee0ccd022100b62e2ad05dbce42b9cfbd022761b1a92ed61825adaae79a10eb5f87143a023d9",
+        "signerPublicKey": "-----BEGIN PUBLIC KEY-----\r\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoo6RtPKCV9egoI79yreQNVCl4+4c\r\nFyN776PGxDDq7E3Vgnfpb8K1nss0ewfUs2/IPNSKpinj4HZ5JgYa449cMg==\r\n-----END PUBLIC KEY-----",
+        "signedByUserId": "doctor",
+        "timestamp": "2026-07-01T07:38:06.942Z"
+      },
+      "prescriptions": [
+        {
+          "version": 1,
+          "medications": [
+            "cough syrup"
+          ],
+          "instructions": "before sleeping",
+          "prescribedBy": "doctor",
+          "prescribedAt": "2026-07-01T07:38:03.845Z"
+        }
+      ]
+    },
+    "mock-json-ce82781fcb6d0e43": {
+      "visitId": "PAT-1011-V2",
+      "patientId": "PAT-1011",
+      "chiefComplaint": "cough",
+      "openedBy": "receptionist",
+      "status": "OPEN",
+      "assignedDoctor": "doctor",
+      "assignedNurse": "",
+      "diagnosis": "",
+      "prescription": null,
+      "vitals": null,
+      "careNotes": [],
+      "labRequests": [],
+      "claims": [],
+      "forwardingLog": [
+        {
+          "action": "VISIT_OPENED",
+          "from": "receptionist",
+          "fromRole": "receptionist",
+          "to": "doctor",
+          "toRole": "doctor",
+          "notes": "",
+          "timestamp": "2026-07-01T07:35:30.375Z"
+        },
+        {
+          "action": "FORWARD_TO_NURSE",
+          "from": "doctor",
+          "fromRole": "doctor",
+          "to": "",
+          "toRole": "nurse",
+          "notes": "look ",
+          "timestamp": "2026-07-01T07:37:38.603Z"
+        },
+        {
+          "action": "VISIT_FINALIZED",
+          "from": "doctor",
+          "fromRole": "doctor",
+          "to": "",
+          "toRole": "",
+          "notes": "cough",
+          "timestamp": "2026-07-01T07:38:46.521Z"
+        }
+      ],
+      "cidHistory": [
+        {
+          "cid": "mock-visit-5dd23de4fa02f931",
+          "reason": "OPEN_VISIT",
+          "updatedBy": "receptionist",
+          "updatedAt": "2026-07-01T07:35:30.375Z"
+        }
+      ],
+      "history": [
+        {
+          "action": "OPEN_VISIT",
+          "timestamp": "2026-07-01T07:35:30.375Z",
+          "visitCID": "mock-visit-5dd23de4fa02f931"
+        }
+      ],
+      "createdAt": "2026-07-01T07:35:30.375Z",
+      "updatedAt": "2026-07-01T07:38:46.521Z",
+      "visitCID": "mock-visit-5dd23de4fa02f931",
+      "securityProof": {
+        "signature": "30440220228a3fab3d04f4f019a391b6793ca42dcdb78203353dbbe6f0f8fd50da43be00022035896dd69994bc7f6ce7c2b7885b1c991d76c42630068069b6ea2d9c9af56b13",
+        "signerPublicKey": "-----BEGIN PUBLIC KEY-----\r\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoo6RtPKCV9egoI79yreQNVCl4+4c\r\nFyN776PGxDDq7E3Vgnfpb8K1nss0ewfUs2/IPNSKpinj4HZ5JgYa449cMg==\r\n-----END PUBLIC KEY-----",
+        "signedByUserId": "doctor",
+        "timestamp": "2026-07-01T07:38:49.920Z"
+      },
+      "finalDiagnosis": "cough",
+      "finalizedBy": "doctor",
+      "finalizedAt": "2026-07-01T07:38:46.521Z"
+    },
+    "mock-json-bc34cbb1fb8da102": {
+      "visitId": "PAT-1011-V2",
+      "patientId": "PAT-1011",
+      "chiefComplaint": "cough",
+      "openedBy": "receptionist",
+      "status": "OPEN",
+      "assignedDoctor": "doctor",
+      "assignedNurse": "",
+      "diagnosis": "",
+      "prescription": null,
+      "vitals": null,
+      "careNotes": [],
+      "labRequests": [],
+      "claims": [],
+      "forwardingLog": [
+        {
+          "action": "VISIT_OPENED",
+          "from": "receptionist",
+          "fromRole": "receptionist",
+          "to": "doctor",
+          "toRole": "doctor",
+          "notes": "",
+          "timestamp": "2026-07-01T07:35:30.375Z"
+        },
+        {
+          "action": "FORWARD_TO_NURSE",
+          "from": "doctor",
+          "fromRole": "doctor",
+          "to": "",
+          "toRole": "nurse",
+          "notes": "look ",
+          "timestamp": "2026-07-01T07:37:38.603Z"
+        },
+        {
+          "action": "VISIT_FINALIZED",
+          "from": "doctor",
+          "fromRole": "doctor",
+          "to": "",
+          "toRole": "",
+          "notes": "cough",
+          "timestamp": "2026-07-01T07:38:46.521Z"
+        },
+        {
+          "action": "MEDICATION_DISPENSED",
+          "from": "pharmacist",
+          "fromRole": "pharmacist",
+          "to": "",
+          "toRole": "",
+          "notes": "cough syrup",
+          "timestamp": "2026-07-01T07:39:52.065Z"
+        }
+      ],
+      "cidHistory": [
+        {
+          "cid": "mock-visit-5dd23de4fa02f931",
+          "reason": "OPEN_VISIT",
+          "updatedBy": "receptionist",
+          "updatedAt": "2026-07-01T07:35:30.375Z"
+        }
+      ],
+      "history": [
+        {
+          "action": "OPEN_VISIT",
+          "timestamp": "2026-07-01T07:35:30.375Z",
+          "visitCID": "mock-visit-5dd23de4fa02f931"
+        }
+      ],
+      "createdAt": "2026-07-01T07:35:30.375Z",
+      "updatedAt": "2026-07-01T07:39:52.065Z",
+      "visitCID": "mock-visit-5dd23de4fa02f931",
+      "securityProof": {
+        "signature": "3046022100b1f053f21667245fd7a9fe0e9322d8bc8ec283aad21a8e3ae7edde98ebcd7f05022100fde4107a31f0da0aa7f1a2886ad39dd2022fce2c784dccef0cd9f1923f7a4891",
+        "signerPublicKey": "-----BEGIN PRIVATE KEY-----\r\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg1Gp28He+HxqVyAqM\r\nw86utjEtN9yca6JjU6ToSKLpKxOhRANCAARD0v9PsQs8SAa5iP92BQRfch9XsNNT\r\n01vGGHJvMH5XHcC8bCoP3r6AFu+5Iul9FvWKEakxMgFRGTzTo1wNbWxU\r\n-----END PRIVATE KEY-----",
+        "signedByUserId": "pharmacist",
+        "timestamp": "2026-07-01T07:39:55.258Z"
+      },
+      "finalDiagnosis": "cough",
+      "finalizedBy": "doctor",
+      "finalizedAt": "2026-07-01T07:38:46.521Z",
+      "medicationDetails": "cough syrup",
+      "medicationDispensedBy": "pharmacist",
+      "medicationDispensedAt": "2026-07-01T07:39:52.065Z"
+    }
+  }
+}

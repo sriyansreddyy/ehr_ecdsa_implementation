@@ -116,10 +116,9 @@ export default function VisitsPage() {
 
       {detailLoading && <div className="flex justify-center py-6"><Spinner /></div>}
 
-      {visit.claimId && (
+      {visit?.claimId && (
           <div className="grid grid-cols-3 gap-4 py-4 border-b border-slate-100">
             <Detail label="Claim ID" value={visit.claimId} />
-            {/* FIX: Check if claimAmount exists before calling toLocaleString */}
             <Detail label="Claim Amount" value={visit.claimAmount ? `₹${visit.claimAmount.toLocaleString()}` : '—'} />
             <Detail label="Claim Status" value={visit.claimStatus || '—'} />
           </div>
@@ -188,7 +187,7 @@ function VisitDetail({ visit, user, onAction, onAuthorize, onRefresh }) {
           <Detail label="Opened" value={new Date(visit.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} />
         </div>
 
-        {visit.claimId && (
+        {visit?.claimId && (
           <div className="grid grid-cols-3 gap-4 py-4 border-b border-slate-100">
             <Detail label="Claim ID" value={visit.claimId} />
             <Detail label="Claim Amount" value={`₹${visit.claimAmount?.toLocaleString()}`} />

@@ -10,7 +10,7 @@ const { execFile } = require('child_process');
 
 const logger        = require('../config/logger');
 const { authenticate } = require('../middleware/auth');
-const { generateOtp, verifyOtp, hasPendingOtp } = require('../../../shared/otpStore');
+const { generateOtp, verifyOtp, hasPendingOtp, clearOtp } = require('../../../shared/otpStore');
 const { sendOtpEmail }    = require('../../../shared/mailer');
 const { enrollActorKey, fetchAndDecryptKey, actorKeyExists } = require('../../../shared/keyVault');
 
@@ -80,6 +80,7 @@ router.post('/send-otp',
       await sendOtpEmail(email, username, otp);
       logger.info('OTP sent', { username, email });
     } catch (err) {
+      clearOtp(username);
       logger.error('Failed to send OTP email', { username, error: err.message });
       return res.status(500).json({ success: false, error: 'Failed to send OTP via Resend. Try again.' });
     }

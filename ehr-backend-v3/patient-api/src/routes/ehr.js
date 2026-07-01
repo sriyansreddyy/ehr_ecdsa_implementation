@@ -139,20 +139,8 @@ router.put('/contact',
     };
     // ==========================================
 
-    // ==========================================
-    // LOCAL BYPASS: STOP BEFORE IPFS
-    // ==========================================
-    return res.status(200).json({ 
-        success: true, 
-        message: "Local E2E Test: Patient Crypto Working", 
-        proof: ehr.securityProof 
-    });
-
-    /* COMMENTED OUT FOR LOCAL TESTING
-    // 3. Pin updated EHR to IPFS
     const newCID = await pinJSON(ehr, `ehr-${patientId}-contact.json`);
 
-    // 4. Store new CID on blockchain
     await req.contract.submitTransaction(
       'EhrContract:UpdateEHRCID',
       patientId, newCID, 'emergencyContact', 'Updated by patient'
@@ -160,7 +148,6 @@ router.put('/contact',
 
     logger.info('Patient updated contact info', { patientId, newCID });
     return res.json({ success: true, data: { cid: newCID, ehr } });
-    */
   })
 );
 
@@ -221,20 +208,8 @@ router.post('/medical-history',
     };
     // ==========================================
 
-    // ==========================================
-    // LOCAL BYPASS: STOP BEFORE IPFS
-    // ==========================================
-    return res.status(200).json({ 
-        success: true, 
-        message: "Local E2E Test: Patient Crypto Working", 
-        proof: ehr.securityProof 
-    });
-
-    /* COMMENTED OUT FOR LOCAL TESTING
-    // 3. Pin updated EHR to IPFS
     const newCID = await pinJSON(ehr, `ehr-${patientId}-history.json`);
 
-    // 4. Store new CID on blockchain
     await req.contract.submitTransaction(
       'EhrContract:UpdateEHRCID',
       patientId, newCID, 'medicalHistory', 'New medical history entry'
@@ -242,7 +217,6 @@ router.post('/medical-history',
 
     logger.info('Patient added medical history entry', { patientId, newCID });
     return res.json({ success: true, data: { cid: newCID, ehr } });
-    */
   })
 );
 

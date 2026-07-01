@@ -10,9 +10,11 @@ const { execFile } = require('child_process');
 
 const logger        = require('../config/logger');
 const { authenticate } = require('../middleware/auth');
-const { generateOtp, verifyOtp, hasPendingOtp } = require('../../../shared/otpStore');
+const { generateOtp, verifyOtp, hasPendingOtp, clearOtp } = require('../../../shared/otpStore');
 const { sendOtpEmail }    = require('../../../shared/mailer');
 const { enrollActorKey, fetchAndDecryptKey, actorKeyExists } = require('../../../shared/keyVault');
+
+const PEER2_ROLES = ['nurse', 'pharmacist', 'medrecordofficer'];
 
 const USERS_FILE    = path.join(__dirname, '../../../shared/users.json');
 const ENROLL_SCRIPT = path.resolve(__dirname, '../../../../ehr-network/scripts/enrollregisteruser.sh');
@@ -80,6 +82,7 @@ router.post('/send-otp',
       await sendOtpEmail(email, username, otp);
       logger.info('OTP sent', { username, email });
     } catch (err) {
+      clearOtp(username);
       logger.error('Failed to send OTP email', { username, error: err.message });
       return res.status(500).json({ success: false, error: 'Failed to send OTP via Resend. Try again.' });
     }
@@ -156,7 +159,7 @@ router.get('/me', authenticate, (req, res) => {
 router.get('/staff', (req, res) => {
   const USERS = getUsers();
   const staff = Object.keys(USERS)
-    .filter(u => ['doctor', 'nurse', 'pharmacist', 'medrecordofficer'].includes(USERS[u].role))
+    .filter(u => PEER2_ROLES.includes(USERS[u].role))
     .map(u => ({ username: u, role: USERS[u].role }));
   return res.json({ success: true, data: staff });
 });
@@ -189,12 +192,16 @@ router.post('/users', authenticate,
     if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
 
     const { username, password, role, email, pin } = req.body;
+    if (!PEER2_ROLES.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        error: `Role must be one of: ${PEER2_ROLES.join(', ')}`,
+      });
+    }
     const USERS = getUsers();
     if (USERS[username]) return res.status(400).json({ success: false, error: 'User already exists' });
 
-    let peer = 'peer0';
-    if (['doctor'].includes(role)) peer = 'peer1';
-    if (['nurse', 'pharmacist', 'medrecordofficer'].includes(role)) peer = 'peer2';
+    const peer = 'peer2';
 
     const hash = await bcrypt.hash(password, 10);
     USERS[username] = { password: hash, role, mspId: 'HospitalMSP', peer, email };

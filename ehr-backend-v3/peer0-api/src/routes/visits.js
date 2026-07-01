@@ -124,6 +124,8 @@ router.put('/:id/doctor',
 
     // Fetch current visit JSON and update forwardingLog
     const visitOnChain = parseResult(await req.contract.evaluateTransaction('VisitContract:GetVisit', visitId));
+    if (!visitOnChain) return res.status(404).json({ success: false, error: 'Visit not found' });
+    if (!visitOnChain.visitCID) return res.status(400).json({ success: false, error: 'Visit has no IPFS content' });
     const visitJson = await fetchByCID(visitOnChain.visitCID);
     visitJson.assignedDoctor = doctorId;
     visitJson.forwardingLog.push({
@@ -156,6 +158,8 @@ router.put('/:id/nurse',
     logger.info('AssignNurse', { visitId, nurseId, userId: req.user.userId });
 
     const visitOnChain = parseResult(await req.contract.evaluateTransaction('VisitContract:GetVisit', visitId));
+    if (!visitOnChain) return res.status(404).json({ success: false, error: 'Visit not found' });
+    if (!visitOnChain.visitCID) return res.status(400).json({ success: false, error: 'Visit has no IPFS content' });
     const visitJson = await fetchByCID(visitOnChain.visitCID);
     visitJson.assignedNurse = nurseId;
     visitJson.forwardingLog.push({
@@ -185,6 +189,8 @@ router.put('/:id/discharge',
     logger.info('DischargePatient', { visitId, userId: req.user.userId });
 
     const visitOnChain = parseResult(await req.contract.evaluateTransaction('VisitContract:GetVisit', visitId));
+    if (!visitOnChain) return res.status(404).json({ success: false, error: 'Visit not found' });
+    if (!visitOnChain.visitCID) return res.status(400).json({ success: false, error: 'Visit has no IPFS content' });
     const visitJson = await fetchByCID(visitOnChain.visitCID);
     visitJson.dischargeNotes = dischargeNotes;
     visitJson.dischargedBy   = req.user.userId;

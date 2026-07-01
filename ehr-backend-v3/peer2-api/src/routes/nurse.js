@@ -86,23 +86,12 @@ router.put('/visits/:id/vitals',
     };
     // ==========================================
 
-    // ==========================================
-    // LOCAL BYPASS: STOP BEFORE IPFS
-    // ==========================================
-    return res.status(200).json({ 
-        success: true, 
-        message: "Local E2E Test: Crypto Engine Working", 
-        proof: clinical.securityProof 
-    });
-
-    /* COMMENTED OUT FOR LOCAL TESTING
     const newCID = await pinJSON(clinical, `visit-${visitId}-vitals.json`);
 
     const result = await req.contract.submitTransaction(
       'ClinicalContract:RecordVitals', visitId, newCID
     );
     return res.json({ success: true, data: parseResult(result) });
-    */
   })
 );
 
@@ -149,23 +138,12 @@ router.post('/visits/:id/carenote',
     };
     // ==========================================
 
-    // ==========================================
-    // LOCAL BYPASS: STOP BEFORE IPFS
-    // ==========================================
-    return res.status(200).json({ 
-        success: true, 
-        message: "Local E2E Test: Crypto Engine Working", 
-        proof: clinical.securityProof 
-    });
-
-    /* COMMENTED OUT FOR LOCAL TESTING
     const newCID = await pinJSON(clinical, `visit-${visitId}-carenote.json`);
 
     const result = await req.contract.submitTransaction(
       'ClinicalContract:AddCareNote', visitId, newCID
     );
     return res.json({ success: true, data: parseResult(result) });
-    */
   })
 );
 
@@ -206,23 +184,12 @@ router.put('/visits/:id/forward/doctor',
     };
     // ==========================================
 
-    // ==========================================
-    // LOCAL BYPASS: STOP BEFORE IPFS
-    // ==========================================
-    return res.status(200).json({ 
-        success: true, 
-        message: "Local E2E Test: Crypto Engine Working", 
-        proof: clinical.securityProof 
-    });
-
-    /* COMMENTED OUT FOR LOCAL TESTING
     const newCID = await pinJSON(clinical, `visit-${visitId}-fwd-doctor.json`);
 
     const result = await req.contract.submitTransaction(
       'ForwardContract:ForwardToDoctor', visitId, newCID
     );
     return res.json({ success: true, data: parseResult(result) });
-    */
   })
 );
 
@@ -271,16 +238,6 @@ router.put('/visits/:id/ehr',
     };
     // ==========================================
 
-    // ==========================================
-    // LOCAL BYPASS: STOP BEFORE IPFS
-    // ==========================================
-    return res.status(200).json({ 
-        success: true, 
-        message: "Local E2E Test: Crypto Engine Working", 
-        proof: ehr.securityProof 
-    });
-
-    /* COMMENTED OUT FOR LOCAL TESTING
     const newCID = await pinJSON(ehr, `ehr-${patientId}-${section}.json`);
     await req.contract.submitTransaction(
       'EhrContract:UpdateEHRCID', patientId, newCID, section, `Updated by nurse ${req.user.userId}`
@@ -288,7 +245,6 @@ router.put('/visits/:id/ehr',
 
     logger.info('Nurse updated EHR', { visitId, patientId, section, newCID });
     return res.json({ success: true, data: { patientId, section, cid: newCID } });
-    */
   })
 );
 
